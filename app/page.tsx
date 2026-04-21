@@ -1,30 +1,86 @@
 import { auth, signIn, signOut } from "@/auth";
 import Link from "next/link";
+import { READER_TOKENS } from "@/lib/paper-data";
 
 export default async function Home() {
   const session = await auth();
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-8">
-      <div className="max-w-md w-full space-y-8 text-center">
-        <div className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Academic Paper Reader
-          </h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Sign in to read and annotate papers.
-          </p>
+    <main
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: READER_TOKENS.paper,
+        color: READER_TOKENS.ink,
+        fontFamily: READER_TOKENS.sans,
+        padding: 32,
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            fontFamily: READER_TOKENS.serif,
+            fontSize: 28,
+            fontWeight: 600,
+            letterSpacing: -0.5,
+            color: READER_TOKENS.ink,
+            marginBottom: 10,
+          }}
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 16 16"
+            fill={READER_TOKENS.accent}
+          >
+            <path d="M3 2v12l5-3 5 3V2z" />
+          </svg>
+          Papers
         </div>
+        <p
+          style={{
+            color: READER_TOKENS.ink2,
+            marginBottom: 32,
+            fontSize: 14,
+            lineHeight: 1.55,
+          }}
+        >
+          Read and annotate academic papers with inline explanations at the
+          reading level that fits you.
+        </p>
 
         {session?.user ? (
-          <div className="space-y-4">
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Signed in as <strong>{session.user.email}</strong>
-            </p>
-            <div className="flex gap-3 justify-center">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <div style={{ fontSize: 13, color: READER_TOKENS.ink3 }}>
+              Signed in as{" "}
+              <strong style={{ color: READER_TOKENS.ink }}>
+                {session.user.email}
+              </strong>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
               <Link
                 href="/reader"
-                className="px-5 py-2.5 rounded-md bg-black text-white text-sm font-medium hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+                style={{
+                  padding: "9px 16px",
+                  borderRadius: 6,
+                  background: READER_TOKENS.accent,
+                  color: "#fffdf7",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
               >
                 Open reader
               </Link>
@@ -36,7 +92,17 @@ export default async function Home() {
               >
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-md border border-neutral-300 dark:border-neutral-700 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                  style={{
+                    padding: "9px 16px",
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: `1px solid ${READER_TOKENS.ruleStrong}`,
+                    color: READER_TOKENS.ink2,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
                 >
                   Sign out
                 </button>
@@ -52,7 +118,17 @@ export default async function Home() {
           >
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-md bg-black text-white text-sm font-medium hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+              style={{
+                padding: "10px 18px",
+                borderRadius: 6,
+                background: READER_TOKENS.accent,
+                border: "none",
+                color: "#fffdf7",
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
             >
               Sign in with Google
             </button>

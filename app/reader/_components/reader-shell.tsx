@@ -1,0 +1,530 @@
+"use client";
+
+import { useState } from "react";
+import {
+  FOLDERS,
+  LEVELS,
+  READER_TOKENS,
+  type FolderKey,
+  type Level,
+} from "@/lib/paper-data";
+import { PaperReader } from "./paper-reader";
+import { Sidebar, LibraryList } from "./library-panes";
+import { AddPaperModal } from "./add-paper-modal";
+import { useLibrary } from "./use-library";
+import {
+  GraphView,
+  HighlightsView,
+  NotesView,
+  type UserNote,
+} from "./tab-views";
+
+type TabKey = "Library" | "Highlights" | "Notes" | "Graph";
+
+function folderName(id: FolderKey): string {
+  const f = FOLDERS.find((entry) => entry.type !== "divider" && entry.id === id);
+  return f && f.type !== "divider" ? f.name : "Pinned";
+}
+
+function CollapseToggle({
+  onClick,
+  side = "left",
+  label,
+}: {
+  collapsed: boolean;
+  onClick: () => void;
+  side?: "left" | "right";
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      style={{
+        width: 26,
+        height: 26,
+        borderRadius: 5,
+        border: "none",
+        background: "transparent",
+        color: READER_TOKENS.ink3,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "background .12s, color .12s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "rgba(60,45,30,.08)";
+        e.currentTarget.style.color = READER_TOKENS.ink;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.color = READER_TOKENS.ink3;
+      }}
+    >
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 13 13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="1.5" y="2.5" width="10" height="8" rx="1.2" />
+        <line x1={side === "left" ? "4.5" : "8.5"} y1="2.5" x2={side === "left" ? "4.5" : "8.5"} y2="10.5" />
+      </svg>
+    </button>
+  );
+}
+
+function AddPaperIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 13 13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+    >
+      <line x1="6.5" y1="2.5" x2="6.5" y2="10.5" />
+      <line x1="2.5" y1="6.5" x2="10.5" y2="6.5" />
+    </svg>
+  );
+}
+
+function ReadingLevelControl({
+  level,
+  setLevel,
+}: {
+  level: Level;
+  setLevel: (l: Level) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        background: "rgba(60,45,30,.06)",
+        padding: 3,
+        borderRadius: 18,
+        fontSize: 11.5,
+        fontFamily: READER_TOKENS.sans,
+      }}
+    >
+      <span
+        style={{
+          padding: "0 8px",
+          color: READER_TOKENS.ink3,
+          fontSize: 10.5,
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
+          fontWeight: 600,
+        }}
+      >
+        Level
+      </span>
+      {LEVELS.map((l) => {
+        const active = l === level;
+        return (
+          <button
+            key={l}
+            onClick={() => setLevel(l)}
+            style={{
+              border: "none",
+              background: active ? "#fffdf7" : "transparent",
+              color: active ? READER_TOKENS.ink : READER_TOKENS.ink2,
+              padding: "4px 10px",
+              borderRadius: 14,
+              fontSize: 11.5,
+              fontWeight: active ? 600 : 500,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              boxShadow: active ? "0 1px 2px rgba(60,40,20,.08)" : "none",
+              textTransform: "capitalize",
+            }}
+          >
+            {l}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TopBar({
+  level,
+  setLevel,
+  tab,
+  setTab,
+  onNewPaper,
+  userEmail,
+  onSignOut,
+}: {
+  level: Level;
+  setLevel: (l: Level) => void;
+  tab: TabKey;
+  setTab: (t: TabKey) => void;
+  onNewPaper: () => void;
+  userEmail?: string | null;
+  onSignOut?: () => void;
+}) {
+  const initial = userEmail?.[0]?.toUpperCase() ?? "M";
+  const tabs: TabKey[] = ["Library", "Highlights", "Notes", "Graph"];
+  return (
+    <div
+      style={{
+        height: 52,
+        flexShrink: 0,
+        background: READER_TOKENS.paper,
+        display: "flex",
+        alignItems: "center",
+        gap: 16,
+        padding: "0 20px",
+        borderBottom: `1px solid ${READER_TOKENS.rule}`,
+        fontFamily: READER_TOKENS.sans,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontFamily: READER_TOKENS.serif,
+          fontSize: 18,
+          fontWeight: 600,
+          color: READER_TOKENS.ink,
+          letterSpacing: -0.3,
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill={READER_TOKENS.accent}>
+          <path d="M3 2v12l5-3 5 3V2z" />
+        </svg>
+        Papers
+      </div>
+      <nav style={{ display: "flex", gap: 2, marginLeft: 12 }}>
+        {tabs.map((label) => {
+          const active = tab === label;
+          return (
+            <button
+              key={label}
+              onClick={() => setTab(label)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 5,
+                fontSize: 12.5,
+                fontWeight: active ? 600 : 500,
+                color: active ? READER_TOKENS.ink : READER_TOKENS.ink2,
+                background: active ? READER_TOKENS.accentSoft : "transparent",
+                cursor: "pointer",
+                border: "none",
+                fontFamily: "inherit",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </nav>
+      <div style={{ flex: 1 }} />
+      <ReadingLevelControl level={level} setLevel={setLevel} />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          background: "rgba(60,45,30,.06)",
+          padding: "6px 12px",
+          borderRadius: 18,
+          fontSize: 12,
+          color: READER_TOKENS.ink3,
+          width: 260,
+        }}
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        >
+          <circle cx="5" cy="5" r="3.5" />
+          <path d="M10.5 10.5l-3-3" />
+        </svg>
+        Search your library
+        <div style={{ flex: 1 }} />
+        <span
+          style={{
+            fontSize: 10,
+            padding: "1px 5px",
+            background: "rgba(60,45,30,.06)",
+            borderRadius: 3,
+            color: READER_TOKENS.ink3,
+          }}
+        >
+          ⌘K
+        </span>
+      </div>
+      <button
+        onClick={onNewPaper}
+        style={{
+          padding: "6px 12px",
+          borderRadius: 6,
+          background: READER_TOKENS.accent,
+          border: "none",
+          color: "#fffdf7",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontFamily: "inherit",
+        }}
+      >
+        <AddPaperIcon /> New
+      </button>
+      {onSignOut && (
+        <button
+          onClick={onSignOut}
+          title={userEmail ?? "Sign out"}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            background: READER_TOKENS.accent,
+            color: "#fffdf7",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 11,
+            fontWeight: 600,
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {initial}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ReaderShell({
+  userEmail,
+  signOutAction,
+}: {
+  userEmail?: string | null;
+  signOutAction?: () => Promise<void>;
+}) {
+  const lib = useLibrary();
+  const [level, setLevel] = useState<Level>("beginner");
+  const [foldersOpen, setFoldersOpen] = useState(true);
+  const [listOpen, setListOpen] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
+  const [tab, setTab] = useState<TabKey>("Library");
+  const [userNotes, setUserNotes] = useState<UserNote[]>([]);
+
+  const openInReader = (paperId: string) => {
+    lib.setPaperId(paperId);
+    setTab("Library");
+  };
+
+  const cols = [
+    foldersOpen ? "220px" : "0px",
+    listOpen ? "280px" : "0px",
+    "1fr",
+  ].join(" ");
+
+  return (
+    <div
+      style={{
+        height: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        background: READER_TOKENS.paper,
+      }}
+    >
+      <TopBar
+        level={level}
+        setLevel={setLevel}
+        tab={tab}
+        setTab={setTab}
+        onNewPaper={() => setAddOpen(true)}
+        userEmail={userEmail}
+        onSignOut={signOutAction ? () => void signOutAction() : undefined}
+      />
+
+      {tab === "Library" && (
+        <div
+          style={{
+            flex: 1,
+            display: "grid",
+            gridTemplateColumns: cols,
+            transition: "grid-template-columns .28s cubic-bezier(.2,.7,.3,1)",
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ overflow: "hidden", minHeight: 0 }}>
+            <div style={{ width: 220, height: "100%" }}>
+              <Sidebar
+                library={lib.library}
+                selected={lib.folderId}
+                onSelect={(id) => lib.setFolderId(id)}
+                dragging={lib.dragging}
+                flashFolder={lib.flashFolder}
+                onDropOnFolder={(pid, fid) => lib.handleDrop(pid, fid)}
+              />
+            </div>
+          </div>
+
+          <div
+            style={{
+              overflow: "hidden",
+              minHeight: 0,
+              borderRight: listOpen ? `1px solid ${READER_TOKENS.rule}` : "none",
+            }}
+          >
+            <div
+              style={{
+                width: 280,
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                background: READER_TOKENS.paperDeep,
+              }}
+            >
+              <div
+                style={{
+                  height: 40,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "0 10px",
+                  fontFamily: READER_TOKENS.sans,
+                  borderBottom: `1px solid ${READER_TOKENS.rule}`,
+                }}
+              >
+                <CollapseToggle
+                  collapsed={!foldersOpen}
+                  onClick={() => setFoldersOpen((o) => !o)}
+                  side="left"
+                  label={foldersOpen ? "Hide sidebar" : "Show sidebar"}
+                />
+                <div
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: READER_TOKENS.ink,
+                    letterSpacing: -0.1,
+                  }}
+                >
+                  {folderName(lib.folderId)}
+                </div>
+                <button
+                  onClick={() => setAddOpen(true)}
+                  title="New paper"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 5,
+                    border: "none",
+                    background: "transparent",
+                    color: READER_TOKENS.ink3,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(60,45,30,.08)";
+                    e.currentTarget.style.color = READER_TOKENS.ink;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = READER_TOKENS.ink3;
+                  }}
+                >
+                  <AddPaperIcon />
+                </button>
+              </div>
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                <LibraryList
+                  library={lib.library}
+                  folderId={lib.folderId}
+                  selected={lib.paperId}
+                  onSelect={(id) => lib.setPaperId(id)}
+                  onDragPaper={(_id, d) => lib.setDragging(d)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ position: "relative", overflow: "hidden", minHeight: 0 }}>
+            <div
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 12,
+                zIndex: 20,
+                display: "flex",
+                gap: 4,
+                background: "rgba(250,247,242,.75)",
+                backdropFilter: "blur(8px)",
+                padding: 3,
+                borderRadius: 7,
+              }}
+            >
+              {!foldersOpen && !listOpen && (
+                <CollapseToggle
+                  collapsed
+                  onClick={() => setFoldersOpen(true)}
+                  side="left"
+                  label="Show folders"
+                />
+              )}
+              <CollapseToggle
+                collapsed={!listOpen}
+                onClick={() => setListOpen((o) => !o)}
+                side="left"
+                label={listOpen ? "Hide papers list" : "Show papers list"}
+              />
+            </div>
+            <PaperReader
+              level={level}
+              paperId={lib.paperId}
+              onImport={() => setAddOpen(true)}
+              onSaveNote={(note) => setUserNotes((prev) => [...prev, note])}
+            />
+            <AddPaperModal open={addOpen} onClose={() => setAddOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {tab === "Highlights" && (
+        <HighlightsView library={lib.library} onOpen={openInReader} />
+      )}
+      {tab === "Notes" && (
+        <NotesView userNotes={userNotes} onOpen={openInReader} />
+      )}
+      {tab === "Graph" && (
+        <GraphView
+          library={lib.library}
+          paperId={lib.paperId}
+          onOpen={openInReader}
+        />
+      )}
+    </div>
+  );
+}

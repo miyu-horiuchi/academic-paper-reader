@@ -39,6 +39,14 @@ yarn-error.log*
 
 # local agent state
 .letta
+.claude
+
+# tauri
+/src-tauri/target
+/src-tauri/gen
+/src-tauri/Cargo.lock
+*.app
+*.dmg
 
 # typescript
 *.tsbuildinfo

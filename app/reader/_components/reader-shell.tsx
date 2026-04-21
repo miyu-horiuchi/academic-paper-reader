@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   FOLDERS,
   LEVELS,
@@ -164,6 +164,9 @@ function TopBar({
   onNewPaper,
   userEmail,
   onSignOut,
+  query,
+  setQuery,
+  searchInputRef,
 }: {
   level: Level;
   setLevel: (l: Level) => void;
@@ -172,6 +175,9 @@ function TopBar({
   onNewPaper: () => void;
   userEmail?: string | null;
   onSignOut?: () => void;
+  query: string;
+  setQuery: (q: string) => void;
+  searchInputRef: RefObject<HTMLInputElement | null>;
 }) {
   const initial = userEmail?.[0]?.toUpperCase() ?? "M";
   const tabs: TabKey[] = ["Library", "Highlights", "Notes", "Graph"];
@@ -232,7 +238,7 @@ function TopBar({
       </nav>
       <div style={{ flex: 1 }} />
       <ReadingLevelControl level={level} setLevel={setLevel} />
-      <div
+      <label
         style={{
           display: "flex",
           alignItems: "center",
@@ -257,8 +263,23 @@ function TopBar({
           <circle cx="5" cy="5" r="3.5" />
           <path d="M10.5 10.5l-3-3" />
         </svg>
-        Search your library
-        <div style={{ flex: 1 }} />
+        <input
+          ref={searchInputRef}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your library"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            fontSize: 12,
+            color: READER_TOKENS.ink,
+            fontFamily: "inherit",
+            padding: 0,
+          }}
+        />
         <span
           style={{
             fontSize: 10,
@@ -270,7 +291,7 @@ function TopBar({
         >
           ⌘K
         </span>
-      </div>
+      </label>
       <button
         onClick={onNewPaper}
         style={{
@@ -331,6 +352,23 @@ export function ReaderShell({
   const [addOpen, setAddOpen] = useState(false);
   const [tab, setTab] = useState<TabKey>("Library");
   const [userNotes, setUserNotes] = useState<UserNote[]>([]);
+  const [query, setQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      } else if (e.key === "Escape" && document.activeElement === searchInputRef.current) {
+        setQuery("");
+        searchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const openInReader = (paperId: string) => {
     lib.setPaperId(paperId);
@@ -360,6 +398,9 @@ export function ReaderShell({
         onNewPaper={() => setAddOpen(true)}
         userEmail={userEmail}
         onSignOut={signOutAction ? () => void signOutAction() : undefined}
+        query={query}
+        setQuery={setQuery}
+        searchInputRef={searchInputRef}
       />
 
       {tab === "Library" && (
@@ -466,6 +507,7 @@ export function ReaderShell({
                   selected={lib.paperId}
                   onSelect={(id) => lib.setPaperId(id)}
                   onDragPaper={(_id, d) => lib.setDragging(d)}
+                  query={query}
                 />
               </div>
             </div>

@@ -203,6 +203,7 @@ export function LibraryList({
   onSelect,
   onDragPaper,
   compact = false,
+  query = "",
 }: {
   library: LibraryPaper[];
   folderId?: FolderKey;
@@ -210,8 +211,18 @@ export function LibraryList({
   onSelect?: (id: string) => void;
   onDragPaper?: (paperId: string | null, dragging: boolean) => void;
   compact?: boolean;
+  query?: string;
 }) {
-  const items = library.filter(FOLDER_MATCH[folderId] ?? (() => true));
+  const q = query.trim().toLowerCase();
+  const items = library
+    .filter(FOLDER_MATCH[folderId] ?? (() => true))
+    .filter((p) => {
+      if (!q) return true;
+      return (
+        p.title.toLowerCase().includes(q) ||
+        p.authors.toLowerCase().includes(q)
+      );
+    });
 
   return (
     <div
@@ -268,9 +279,17 @@ export function LibraryList({
               lineHeight: 1.6,
             }}
           >
-            No papers in this folder yet.
-            <br />
-            <span style={{ fontSize: 11 }}>Drag a paper here to add it.</span>
+            {q ? (
+              <>
+                No papers match <span style={{ color: READER_TOKENS.ink }}>&ldquo;{query}&rdquo;</span>.
+              </>
+            ) : (
+              <>
+                No papers in this folder yet.
+                <br />
+                <span style={{ fontSize: 11 }}>Drag a paper here to add it.</span>
+              </>
+            )}
           </div>
         )}
         {items.map((p) => {

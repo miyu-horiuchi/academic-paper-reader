@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LEVELS,
   LIBRARY,
@@ -13,6 +13,8 @@ import {
   type Section,
 } from "@/lib/paper-data";
 import type { UserNote } from "./tab-views";
+import { AskAI } from "./ask-ai";
+import { SelectionPopover, type SelectionState } from "./selection-popover";
 
 type SentenceLocus = { sectionId: string; sentenceIdx: number };
 
@@ -107,7 +109,7 @@ function ExplainPopover({
   onUpdateDraft: (draft: NoteDraft) => void;
   onCancelNote: () => void;
   onSaveNote: (draft: NoteDraft) => void;
-}) {
+}): React.JSX.Element | null {
   if (hover.kind === "term") {
     const term =
       TERMS[hover.term] ?? { short: "Definition not available.", full: "" };
@@ -385,6 +387,17 @@ function ExplainPopover({
             </div>
           </div>
         )}
+
+        {isPinned && !isEditing && (
+          <AskAI
+            context={{
+              paperTitle: PAPER.title,
+              sectionTitle: sec.title,
+              quote: sent.text.replace(/\[\[([^\]]+)\]\]/g, "$1"),
+            }}
+            placeholder="Ask about this sentence…"
+          />
+        )}
       </div>
     );
   }
@@ -584,6 +597,40 @@ export function PaperReader({
   const [hover, setHover] = useState<HoverState | null>(null);
   const [pinned, setPinned] = useState<PinnedState | null>(null);
   const [noteDraft, setNoteDraft] = useState<NoteDraft | null>(null);
+  const [selection, setSelection] = useState<SelectionState | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handler = () => {
+      const sel = window.getSelection?.();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        setSelection(null);
+        return;
+      }
+      const text = sel.toString().trim();
+      if (text.length < 2) {
+        setSelection(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      if (
+        !containerRef.current ||
+        !containerRef.current.contains(range.commonAncestorContainer)
+      ) {
+        setSelection(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      let node: Node | null = range.commonAncestorContainer;
+      if (node && node.nodeType === 3) node = node.parentElement;
+      const secEl =
+        node instanceof Element ? node.closest("[data-section]") : null;
+      const sectionId = secEl ? secEl.getAttribute("data-section") : null;
+      setSelection({ text, rect, sectionId });
+    };
+    document.addEventListener("selectionchange", handler);
+    return () => document.removeEventListener("selectionchange", handler);
+  }, []);
 
   const isFull = paperId === PAPER.id;
   const entry = LIBRARY.find((p) => p.id === paperId) ?? LIBRARY[0];
@@ -645,6 +692,7 @@ export function PaperReader({
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: "relative",
         height: "100%",
@@ -707,6 +755,7 @@ export function PaperReader({
         {PAPER.sections.map((sec) => (
           <section
             key={sec.id}
+            data-section={sec.id}
             onMouseEnter={(e) => onSectionEnter(sec, e.currentTarget)}
             onMouseLeave={onSectionLeave}
             style={{ marginBottom: 36, position: "relative" }}
@@ -808,6 +857,29 @@ export function PaperReader({
             inset: 0,
             zIndex: 40,
             cursor: "default",
+          }}
+        />
+      )}
+
+      {selection && !pinned && (
+        <SelectionPopover
+          selection={selection}
+          onClose={() => {
+            setSelection(null);
+            window.getSelection?.()?.removeAllRanges();
+          }}
+          onSaveNote={(color, text) => {
+            const sectionId = selection.sectionId ?? "abstract";
+            onSaveNote?.({
+              id: `u${Date.now()}`,
+              sectionId,
+              sentenceIdx: 0,
+              color,
+              text: text.trim(),
+              createdAt: Date.now(),
+            });
+            setSelection(null);
+            window.getSelection?.()?.removeAllRanges();
           }}
         />
       )}

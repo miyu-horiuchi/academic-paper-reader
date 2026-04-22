@@ -1,0 +1,47 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Academic Paper Reader",
+  "version": "0.1.0",
+  "identifier": "com.miyuhoriuchi.academicpaperreader",
+  "build": {
+    "frontendDist": "./dist",
+    "devUrl": "http://localhost:3000"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Academic Paper Reader",
+        "url": "https://academic-paper-reader-chi.vercel.app/",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": "-"
+    },
+    "category": "Productivity",
+    "shortDescription": "Read academic papers at your level.",
+    "longDescription": "Academic Paper Reader — import papers, adjust reading level, and ask AI questions about what you're reading."
+  }
+}

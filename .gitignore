@@ -40,6 +40,10 @@ yarn-error.log*
 # local agent state
 .letta
 
+# tauri
+/src-tauri/target/
+/src-tauri/gen/schemas/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

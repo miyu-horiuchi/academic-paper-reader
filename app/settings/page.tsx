@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import { READER_TOKENS } from "@/lib/paper-data";
 import { PapersIcon } from "@/components/papers-icon";
 import { SettingsForm } from "./_components/settings-form";
@@ -61,7 +62,9 @@ export default async function SettingsPage() {
           app on each request &mdash; never stored on any server.
         </p>
 
-        <SettingsForm />
+        <Suspense>
+          <SettingsForm />
+        </Suspense>
       </div>
     </main>
   );

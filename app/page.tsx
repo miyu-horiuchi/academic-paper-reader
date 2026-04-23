@@ -1,6 +1,7 @@
 import { auth, signIn, signOut } from "@/auth";
 import Link from "next/link";
 import { READER_TOKENS } from "@/lib/paper-data";
+import { PapersIcon } from "@/components/papers-icon";
 
 export default async function Home() {
   const session = await auth();
@@ -32,14 +33,7 @@ export default async function Home() {
             marginBottom: 10,
           }}
         >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 16 16"
-            fill={READER_TOKENS.accent}
-          >
-            <path d="M3 2v12l5-3 5 3V2z" />
-          </svg>
+          <PapersIcon size={28} />
           Papers
         </div>
         <p

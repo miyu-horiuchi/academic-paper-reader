@@ -13,6 +13,7 @@ import {
   Sidebar,
   LibraryList,
 } from "@/app/reader/_components/library-panes";
+import { PapersIcon } from "@/components/papers-icon";
 import { AddPaperModal } from "@/app/reader/_components/add-paper-modal";
 import { useLibrary } from "@/app/reader/_components/use-library";
 import type { UserNote } from "@/app/reader/_components/tab-views";
@@ -203,14 +204,7 @@ function SystemMenubar({ userEmail, onSignOut }: {
         borderBottom: "1px solid rgba(0,0,0,.04)",
       }}
     >
-      <svg
-        width="13"
-        height="13"
-        viewBox="0 0 13 13"
-        fill={READER_TOKENS.ink}
-      >
-        <path d="M6.5 0a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM5 3h3v2H5zm0 3h3v4H5z" />
-      </svg>
+      <PapersIcon size={14} />
       <strong>Papers</strong>
       <span>File</span>
       <span>Edit</span>

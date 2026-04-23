@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { READER_TOKENS } from "@/lib/paper-data";
+import { PapersIcon } from "@/components/papers-icon";
 
 const DMG_URL =
   "https://github.com/miyu-horiuchi/academic-paper-reader/releases/latest/download/AcademicPaperReader-macOS.dmg";
@@ -32,9 +33,7 @@ export default function DownloadPage() {
             marginBottom: 10,
           }}
         >
-          <svg width="22" height="22" viewBox="0 0 16 16" fill={READER_TOKENS.accent}>
-            <path d="M3 2v12l5-3 5 3V2z" />
-          </svg>
+          <PapersIcon size={28} />
           Papers
         </div>
         <h1

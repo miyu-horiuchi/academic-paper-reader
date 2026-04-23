@@ -8,6 +8,7 @@ import {
   type FolderKey,
   type Level,
 } from "@/lib/paper-data";
+import { PapersIcon } from "@/components/papers-icon";
 import { PaperReader } from "./paper-reader";
 import { Sidebar, LibraryList } from "./library-panes";
 import { AddPaperModal } from "./add-paper-modal";
@@ -208,9 +209,7 @@ function TopBar({
           letterSpacing: -0.3,
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill={READER_TOKENS.accent}>
-          <path d="M3 2v12l5-3 5 3V2z" />
-        </svg>
+        <PapersIcon size={20} />
         Papers
       </div>
       <nav style={{ display: "flex", gap: 2, marginLeft: 12 }}>

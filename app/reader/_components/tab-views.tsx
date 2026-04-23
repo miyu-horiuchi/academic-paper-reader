@@ -742,3 +742,467 @@ export function GraphView({
     </div>
   );
 }
+
+type TodoItem = {
+  id: string;
+  paperId: string | null;
+  text: string;
+  done: boolean;
+  due: "Today" | "Tomorrow" | "This week" | "Next week" | "Someday";
+};
+
+type TodoFilter = "open" | "done" | "all";
+
+const SEED_TODOS: TodoItem[] = [
+  {
+    id: "t1",
+    paperId: "attention",
+    text: "Re-read §3.2 Scaled Dot-Product Attention — work through the √dₖ derivation",
+    done: true,
+    due: "Today",
+  },
+  {
+    id: "t2",
+    paperId: "attention",
+    text: "Sketch the multi-head block on paper before reading §3.2.2",
+    done: false,
+    due: "Today",
+  },
+  {
+    id: "t3",
+    paperId: "attention",
+    text: "Compare positional encoding (§3.5) to learned embeddings — what breaks?",
+    done: false,
+    due: "Tomorrow",
+  },
+  {
+    id: "t4",
+    paperId: "attention",
+    text: "BLEU 28.4 result (§6.1) — which baselines, which dataset?",
+    done: false,
+    due: "This week",
+  },
+  {
+    id: "t5",
+    paperId: "bert",
+    text: "Read BERT §3: Pre-training objectives vs. Transformer",
+    done: false,
+    due: "This week",
+  },
+  {
+    id: "t6",
+    paperId: null,
+    text: "Write a 200-word summary tying together Attention → BERT → GPT for study notes",
+    done: false,
+    due: "Next week",
+  },
+];
+
+const BUCKETS: TodoItem["due"][] = [
+  "Today",
+  "Tomorrow",
+  "This week",
+  "Next week",
+  "Someday",
+];
+
+export function TodoView({
+  library,
+  onOpen,
+}: {
+  library: LibraryPaper[];
+  onOpen?: (paperId: string) => void;
+}) {
+  const [todos, setTodos] = useState<TodoItem[]>(SEED_TODOS);
+  const [filter, setFilter] = useState<TodoFilter>("open");
+  const [input, setInput] = useState("");
+  const [scratch, setScratch] = useState("");
+
+  const toggle = (id: string) =>
+    setTodos((ts) =>
+      ts.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
+    );
+  const remove = (id: string) =>
+    setTodos((ts) => ts.filter((t) => t.id !== id));
+  const add = () => {
+    const v = input.trim();
+    if (!v) return;
+    setTodos((ts) => [
+      ...ts,
+      {
+        id: "u" + Date.now(),
+        paperId: null,
+        text: v,
+        done: false,
+        due: "Someday",
+      },
+    ]);
+    setInput("");
+  };
+
+  const visible = todos.filter((t) =>
+    filter === "all" ? true : filter === "done" ? t.done : !t.done,
+  );
+  const counts = {
+    open: todos.filter((t) => !t.done).length,
+    done: todos.filter((t) => t.done).length,
+    all: todos.length,
+  };
+
+  const grouped = BUCKETS.map(
+    (b) => [b, visible.filter((t) => t.due === b)] as const,
+  ).filter(([, xs]) => xs.length > 0);
+
+  const filterChips: Array<[TodoFilter, string, number]> = [
+    ["open", "Open", counts.open],
+    ["done", "Done", counts.done],
+    ["all", "All", counts.all],
+  ];
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: "grid",
+        gridTemplateColumns: "1fr 320px",
+        background: READER_TOKENS.paper,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          borderRight: `1px solid ${READER_TOKENS.rule}`,
+        }}
+      >
+        <TabHeader
+          title="To-do"
+          subtitle={`${counts.open} open · ${counts.done} done`}
+          right={
+            <div
+              style={{ display: "flex", gap: 6, fontFamily: READER_TOKENS.sans }}
+            >
+              {filterChips.map(([id, label, n]) => {
+                const active = filter === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setFilter(id)}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: 5,
+                      border: `1px solid ${active ? READER_TOKENS.ruleStrong : READER_TOKENS.rule}`,
+                      background: active ? "#fffdf7" : "transparent",
+                      cursor: "pointer",
+                      fontSize: 11.5,
+                      color: READER_TOKENS.ink,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {label}
+                    <span
+                      style={{
+                        color: READER_TOKENS.ink3,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {n}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          }
+        />
+
+        <div
+          style={{
+            padding: "14px 32px",
+            borderBottom: `1px solid ${READER_TOKENS.rule}`,
+            display: "flex",
+            gap: 8,
+          }}
+        >
+          <div
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: 9,
+              border: `1.5px solid ${READER_TOKENS.ink3}`,
+              marginTop: 7,
+              flexShrink: 0,
+            }}
+          />
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") add();
+            }}
+            placeholder="Add a task…  (Enter to save)"
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              fontFamily: READER_TOKENS.serif,
+              fontSize: 15.5,
+              color: READER_TOKENS.ink,
+              padding: "6px 0",
+            }}
+          />
+          {input.trim() && (
+            <button
+              onClick={add}
+              style={{
+                padding: "4px 10px",
+                borderRadius: 5,
+                border: "none",
+                background: READER_TOKENS.accent,
+                color: "#fffdf7",
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: READER_TOKENS.sans,
+              }}
+            >
+              Add
+            </button>
+          )}
+        </div>
+
+        <div style={{ flex: 1, overflow: "auto", padding: "8px 0 40px" }}>
+          {grouped.length === 0 && (
+            <div
+              style={{
+                padding: "80px 32px",
+                textAlign: "center",
+                color: READER_TOKENS.ink3,
+                fontFamily: READER_TOKENS.sans,
+                fontSize: 13,
+              }}
+            >
+              Nothing{" "}
+              {filter === "done"
+                ? "done"
+                : filter === "open"
+                  ? "to do"
+                  : "here yet"}
+              .
+            </div>
+          )}
+          {grouped.map(([bucket, items]) => (
+            <div key={bucket} style={{ marginTop: 18 }}>
+              <div
+                style={{
+                  padding: "0 32px 8px",
+                  fontFamily: READER_TOKENS.sans,
+                  fontSize: 10.5,
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  color: READER_TOKENS.ink3,
+                  fontWeight: 600,
+                }}
+              >
+                {bucket}{" "}
+                <span
+                  style={{
+                    color: READER_TOKENS.ink3,
+                    fontWeight: 400,
+                    marginLeft: 4,
+                  }}
+                >
+                  {items.length}
+                </span>
+              </div>
+              {items.map((t) => {
+                const paper = t.paperId
+                  ? library.find((p) => p.id === t.paperId)
+                  : null;
+                return (
+                  <div
+                    key={t.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "10px 32px",
+                      borderBottom: `1px solid ${READER_TOKENS.rule}`,
+                    }}
+                  >
+                    <button
+                      onClick={() => toggle(t.id)}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        marginTop: 3,
+                        flexShrink: 0,
+                        border: `1.5px solid ${t.done ? READER_TOKENS.accent : READER_TOKENS.ink3}`,
+                        background: t.done
+                          ? READER_TOKENS.accent
+                          : "transparent",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {t.done && (
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 11 11"
+                          fill="none"
+                          stroke="#fffdf7"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        >
+                          <path d="M2 5.5 4.5 8 9 3" />
+                        </svg>
+                      )}
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: READER_TOKENS.serif,
+                          fontSize: 15,
+                          lineHeight: 1.5,
+                          color: t.done
+                            ? READER_TOKENS.ink3
+                            : READER_TOKENS.ink,
+                          textDecoration: t.done ? "line-through" : "none",
+                        }}
+                      >
+                        {t.text}
+                      </div>
+                      {paper && (
+                        <button
+                          onClick={() => onOpen?.(paper.id)}
+                          style={{
+                            marginTop: 4,
+                            padding: 0,
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            fontFamily: READER_TOKENS.sans,
+                            fontSize: 11.5,
+                            color: READER_TOKENS.accent,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <svg
+                            width="9"
+                            height="9"
+                            viewBox="0 0 9 9"
+                            fill="currentColor"
+                          >
+                            <path d="M2 1v7l3-2 3 2V1z" />
+                          </svg>
+                          {paper.title}
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => remove(t.id)}
+                      title="Delete"
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        color: READER_TOKENS.ink3,
+                        fontSize: 16,
+                        lineHeight: 1,
+                        padding: "2px 4px",
+                        marginTop: 1,
+                        opacity: 0.6,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          background: READER_TOKENS.paperDeep,
+          minHeight: 0,
+        }}
+      >
+        <div style={{ padding: "24px 24px 12px" }}>
+          <div
+            style={{
+              fontFamily: READER_TOKENS.serif,
+              fontSize: 20,
+              fontWeight: 600,
+              color: READER_TOKENS.ink,
+              letterSpacing: -0.2,
+            }}
+          >
+            Scratchpad
+          </div>
+          <div
+            style={{
+              fontFamily: READER_TOKENS.sans,
+              fontSize: 11.5,
+              color: READER_TOKENS.ink3,
+              marginTop: 2,
+            }}
+          >
+            Loose thoughts, questions, reminders — doesn&rsquo;t belong to any
+            one paper.
+          </div>
+        </div>
+        <textarea
+          value={scratch}
+          onChange={(e) => setScratch(e.target.value)}
+          placeholder={
+            "e.g. Questions to come back to\n- does causal masking apply to encoder?\n- why is d_model = 512?"
+          }
+          style={{
+            flex: 1,
+            margin: "0 24px 24px",
+            border: `1px solid ${READER_TOKENS.rule}`,
+            borderRadius: 6,
+            padding: "14px 16px",
+            resize: "none",
+            outline: "none",
+            background: "#fffdf7",
+            color: READER_TOKENS.ink,
+            fontFamily: READER_TOKENS.serif,
+            fontSize: 14.5,
+            lineHeight: 1.6,
+          }}
+        />
+        <div
+          style={{
+            padding: "0 24px 20px",
+            fontFamily: READER_TOKENS.sans,
+            fontSize: 11,
+            color: READER_TOKENS.ink3,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>Autosaves locally</span>
+          <span>{scratch.length} chars</span>
+        </div>
+      </div>
+    </div>
+  );
+}

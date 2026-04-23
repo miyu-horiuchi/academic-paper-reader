@@ -134,6 +134,20 @@ export default async function Home() {
             </button>
           </form>
         )}
+        <div
+          style={{
+            marginTop: 28,
+            fontSize: 12,
+            color: READER_TOKENS.ink3,
+          }}
+        >
+          <Link
+            href="/download"
+            style={{ color: READER_TOKENS.ink2, textDecoration: "none" }}
+          >
+            Download for Mac →
+          </Link>
+        </div>
       </div>
     </main>
   );

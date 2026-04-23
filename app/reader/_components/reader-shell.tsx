@@ -16,10 +16,11 @@ import {
   GraphView,
   HighlightsView,
   NotesView,
+  TodoView,
   type UserNote,
 } from "./tab-views";
 
-type TabKey = "Library" | "Highlights" | "Notes" | "Graph";
+type TabKey = "Library" | "Highlights" | "Notes" | "Graph" | "To-do";
 
 function folderName(id: FolderKey): string {
   const f = FOLDERS.find((entry) => entry.type !== "divider" && entry.id === id);
@@ -180,7 +181,7 @@ function TopBar({
   searchInputRef: RefObject<HTMLInputElement | null>;
 }) {
   const initial = userEmail?.[0]?.toUpperCase() ?? "M";
-  const tabs: TabKey[] = ["Library", "Highlights", "Notes", "Graph"];
+  const tabs: TabKey[] = ["Library", "Highlights", "Notes", "Graph", "To-do"];
   return (
     <div
       style={{
@@ -566,6 +567,9 @@ export function ReaderShell({
           paperId={lib.paperId}
           onOpen={openInReader}
         />
+      )}
+      {tab === "To-do" && (
+        <TodoView library={lib.library} onOpen={openInReader} />
       )}
     </div>
   );

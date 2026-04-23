@@ -8,6 +8,7 @@ import {
   type FolderKey,
   type Level,
 } from "@/lib/paper-data";
+import Link from "next/link";
 import { PapersIcon } from "@/components/papers-icon";
 import { PaperReader } from "./paper-reader";
 import { Sidebar, LibraryList } from "./library-panes";
@@ -311,6 +312,36 @@ function TopBar({
       >
         <AddPaperIcon /> New
       </button>
+      <Link
+        href="/settings"
+        title="AI provider settings"
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: READER_TOKENS.ink3,
+          textDecoration: "none",
+          border: `1px solid ${READER_TOKENS.rule}`,
+          background: "transparent",
+        }}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="7" cy="7" r="2" />
+          <path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.76 2.76l1.41 1.41M9.83 9.83l1.41 1.41M2.76 11.24l1.41-1.41M9.83 4.17l1.41-1.41" />
+        </svg>
+      </Link>
       {onSignOut && (
         <button
           onClick={onSignOut}

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { READER_TOKENS } from "@/lib/paper-data";
+import { PROVIDERS, useAiSettings } from "@/lib/ai-settings";
 
 const ASK_CHIPS = [
   {
@@ -46,8 +48,13 @@ export function AskAI({
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [chip, setChip] = useState<string | null>(null);
+  const settings = useAiSettings();
+  const providerLabel = settings
+    ? PROVIDERS.find((p) => p.id === settings.provider)?.modelLabel
+    : null;
 
   const run = async (prompt: string, chipId: string | null) => {
+    if (!settings) return;
     setLoading(true);
     setAnswer("");
     setChip(chipId);
@@ -55,15 +62,26 @@ export function AskAI({
       const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...context, prompt }),
+        body: JSON.stringify({
+          ...context,
+          prompt,
+          provider: settings.provider,
+          apiKey: settings.apiKey,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setAnswer(
-          data?.error === "ai_unavailable"
-            ? "AI is not configured for this deployment yet."
-            : "Could not reach the AI. Try again.",
-        );
+        if (data?.error === "bad_key") {
+          setAnswer(
+            "Your API key was rejected by the provider. Update it in Settings.",
+          );
+        } else if (data?.error === "no_key") {
+          setAnswer("Configure an AI provider in Settings.");
+        } else {
+          setAnswer(
+            `Could not reach the AI. ${data?.detail ?? "Try again."}`,
+          );
+        }
       } else {
         const data = (await res.json()) as { text?: string };
         setAnswer(data.text ?? "");
@@ -108,68 +126,119 @@ export function AskAI({
         </svg>
         Ask AI
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-        {ASK_CHIPS.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => run(c.prompt, c.id)}
-            disabled={loading}
-            style={{
-              padding: "4px 9px",
-              borderRadius: 12,
-              border: `1px solid ${chip === c.id ? READER_TOKENS.accent : READER_TOKENS.rule}`,
-              background: chip === c.id ? READER_TOKENS.accentSoft : "#faf7f2",
-              fontSize: 11,
-              fontWeight: 500,
-              color: READER_TOKENS.ink,
-              cursor: loading ? "wait" : "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && q.trim()) run(q.trim(), null);
-          }}
-          placeholder={placeholder}
-          disabled={loading}
+      {!settings ? (
+        <div
           style={{
-            flex: 1,
-            border: `1px solid ${READER_TOKENS.rule}`,
-            borderRadius: 5,
-            padding: "6px 10px",
-            fontFamily: "inherit",
-            fontSize: 12,
-            color: READER_TOKENS.ink,
+            padding: "12px 14px",
+            borderRadius: 6,
             background: "#fffdf7",
-            outline: "none",
-          }}
-        />
-        <button
-          onClick={() => q.trim() && run(q.trim(), null)}
-          disabled={loading || !q.trim()}
-          style={{
-            padding: "6px 12px",
-            borderRadius: 5,
-            border: "none",
-            background:
-              q.trim() && !loading ? READER_TOKENS.ink : "rgba(60,45,30,.2)",
-            color: "#fffdf7",
-            fontSize: 11.5,
-            fontWeight: 600,
-            cursor: q.trim() && !loading ? "pointer" : "not-allowed",
-            fontFamily: "inherit",
+            border: `1px dashed ${READER_TOKENS.rule}`,
+            fontSize: 12,
+            color: READER_TOKENS.ink2,
+            lineHeight: 1.55,
           }}
         >
-          {loading ? "…" : "Ask"}
-        </button>
-      </div>
+          Ask AI uses your own API key — pick a provider and paste a key.{" "}
+          <Link
+            href="/settings"
+            style={{
+              color: READER_TOKENS.accent,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Set up your AI provider →
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div
+            style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}
+          >
+            {ASK_CHIPS.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => run(c.prompt, c.id)}
+                disabled={loading}
+                style={{
+                  padding: "4px 9px",
+                  borderRadius: 12,
+                  border: `1px solid ${chip === c.id ? READER_TOKENS.accent : READER_TOKENS.rule}`,
+                  background:
+                    chip === c.id ? READER_TOKENS.accentSoft : "#faf7f2",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: READER_TOKENS.ink,
+                  cursor: loading ? "wait" : "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && q.trim()) run(q.trim(), null);
+              }}
+              placeholder={placeholder}
+              disabled={loading}
+              style={{
+                flex: 1,
+                border: `1px solid ${READER_TOKENS.rule}`,
+                borderRadius: 5,
+                padding: "6px 10px",
+                fontFamily: "inherit",
+                fontSize: 12,
+                color: READER_TOKENS.ink,
+                background: "#fffdf7",
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={() => q.trim() && run(q.trim(), null)}
+              disabled={loading || !q.trim()}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 5,
+                border: "none",
+                background:
+                  q.trim() && !loading
+                    ? READER_TOKENS.ink
+                    : "rgba(60,45,30,.2)",
+                color: "#fffdf7",
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: q.trim() && !loading ? "pointer" : "not-allowed",
+                fontFamily: "inherit",
+              }}
+            >
+              {loading ? "…" : "Ask"}
+            </button>
+          </div>
+          {providerLabel && (
+            <div
+              style={{
+                fontSize: 10.5,
+                color: READER_TOKENS.ink3,
+                marginTop: 6,
+                textAlign: "right",
+              }}
+            >
+              via {providerLabel} ·{" "}
+              <Link
+                href="/settings"
+                style={{ color: READER_TOKENS.ink3, textDecoration: "underline" }}
+              >
+                change
+              </Link>
+            </div>
+          )}
+        </>
+      )}
       {(loading || answer) && (
         <div
           style={{

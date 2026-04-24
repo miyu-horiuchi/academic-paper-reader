@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   FOLDERS,
-  LEVELS,
   READER_TOKENS,
   type FolderKey,
   type Level,
@@ -132,54 +131,6 @@ function ListIcon() {
   );
 }
 
-function ReadingLevelControl({
-  level,
-  setLevel,
-}: {
-  level: Level;
-  setLevel: (l: Level) => void;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        background: "rgba(60,45,30,.06)",
-        padding: 2,
-        borderRadius: 6,
-        fontFamily: READER_TOKENS.sans,
-      }}
-    >
-      {LEVELS.map((l) => {
-        const active = l === level;
-        return (
-          <button
-            key={l}
-            onClick={() => setLevel(l)}
-            style={{
-              border: "none",
-              background: active ? "#fffdf7" : "transparent",
-              color: active ? READER_TOKENS.ink : READER_TOKENS.ink2,
-              padding: "3px 8px",
-              borderRadius: 4,
-              fontSize: 10.5,
-              fontWeight: active ? 600 : 500,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              boxShadow: active ? "0 1px 1px rgba(60,40,20,.06)" : "none",
-              textTransform: "capitalize",
-              letterSpacing: 0.1,
-            }}
-          >
-            {l}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function SystemMenubar({ userEmail, onSignOut }: {
   userEmail?: string | null;
   onSignOut?: () => void;
@@ -244,7 +195,7 @@ export function DesktopShell({
   signOutAction?: () => Promise<void>;
 }) {
   const lib = useLibrary();
-  const [level, setLevel] = useState<Level>("beginner");
+  const level: Level = "beginner";
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -394,8 +345,6 @@ export function DesktopShell({
                 {paper.authors} · {pageCount} pp · {paper.folder}
               </div>
             </div>
-
-            <ReadingLevelControl level={level} setLevel={setLevel} />
 
             <div
               style={{

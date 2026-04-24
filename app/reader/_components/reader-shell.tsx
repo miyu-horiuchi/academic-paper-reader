@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   FOLDERS,
-  LEVELS,
   READER_TOKENS,
   type FolderKey,
   type Level,
@@ -107,69 +106,8 @@ function AddPaperIcon() {
   );
 }
 
-function ReadingLevelControl({
-  level,
-  setLevel,
-}: {
-  level: Level;
-  setLevel: (l: Level) => void;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        background: "rgba(60,45,30,.06)",
-        padding: 3,
-        borderRadius: 18,
-        fontSize: 11.5,
-        fontFamily: READER_TOKENS.sans,
-      }}
-    >
-      <span
-        style={{
-          padding: "0 8px",
-          color: READER_TOKENS.ink3,
-          fontSize: 10.5,
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-          fontWeight: 600,
-        }}
-      >
-        Level
-      </span>
-      {LEVELS.map((l) => {
-        const active = l === level;
-        return (
-          <button
-            key={l}
-            onClick={() => setLevel(l)}
-            style={{
-              border: "none",
-              background: active ? "#fffdf7" : "transparent",
-              color: active ? READER_TOKENS.ink : READER_TOKENS.ink2,
-              padding: "4px 10px",
-              borderRadius: 14,
-              fontSize: 11.5,
-              fontWeight: active ? 600 : 500,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              boxShadow: active ? "0 1px 2px rgba(60,40,20,.08)" : "none",
-              textTransform: "capitalize",
-            }}
-          >
-            {l}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function TopBar({
-  level,
-  setLevel,
   tab,
   setTab,
   onNewPaper,
@@ -180,8 +118,6 @@ function TopBar({
   setQuery,
   searchInputRef,
 }: {
-  level: Level;
-  setLevel: (l: Level) => void;
   tab: TabKey;
   setTab: (t: TabKey) => void;
   onNewPaper: () => void;
@@ -254,7 +190,6 @@ function TopBar({
         })}
       </nav>
       <div style={{ flex: 1 }} />
-      <ReadingLevelControl level={level} setLevel={setLevel} />
       <label
         style={{
           display: "flex",
@@ -377,7 +312,7 @@ export function ReaderShell({
   signOutAction?: () => Promise<void>;
 }) {
   const lib = useLibrary();
-  const [level, setLevel] = useState<Level>("beginner");
+  const level: Level = "beginner";
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -422,8 +357,6 @@ export function ReaderShell({
       }}
     >
       <TopBar
-        level={level}
-        setLevel={setLevel}
         tab={tab}
         setTab={setTab}
         onNewPaper={() => setAddOpen(true)}

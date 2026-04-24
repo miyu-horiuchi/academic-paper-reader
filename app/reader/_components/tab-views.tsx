@@ -823,6 +823,8 @@ export function TodoView({
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     try {
       const rawTodos = window.localStorage.getItem(TODOS_STORAGE_KEY);
       if (rawTodos) {
@@ -831,10 +833,31 @@ export function TodoView({
       }
       const rawScratch = window.localStorage.getItem(SCRATCH_STORAGE_KEY);
       if (rawScratch !== null) setScratch(rawScratch);
-    } catch {
-    } finally {
-      setHydrated(true);
-    }
+    } catch {}
+
+    Promise.all([
+      fetch("/api/todos").then((r) => (r.ok ? r.json() : null)),
+      fetch("/api/scratchpad").then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([todosRes, scratchRes]) => {
+        if (cancelled) return;
+        if (todosRes && Array.isArray(todosRes.todos)) {
+          setTodos(todosRes.todos);
+        } else if (todosRes && todosRes.todos === null) {
+          setTodos(SEED_TODOS);
+        }
+        if (scratchRes && typeof scratchRes.text === "string") {
+          setScratch(scratchRes.text);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -842,6 +865,14 @@ export function TodoView({
     try {
       window.localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos));
     } catch {}
+    const t = setTimeout(() => {
+      fetch("/api/todos", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ todos }),
+      }).catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
   }, [todos, hydrated]);
 
   useEffect(() => {
@@ -849,6 +880,14 @@ export function TodoView({
     try {
       window.localStorage.setItem(SCRATCH_STORAGE_KEY, scratch);
     } catch {}
+    const t = setTimeout(() => {
+      fetch("/api/scratchpad", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: scratch }),
+      }).catch(() => {});
+    }, 600);
+    return () => clearTimeout(t);
   }, [scratch, hydrated]);
 
   const toggle = (id: string) =>

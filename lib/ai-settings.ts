@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
 export const PROVIDERS = [
   {
     id: "anthropic",
@@ -86,19 +82,4 @@ export function clearAiSettings() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
   window.dispatchEvent(new Event("papers:ai-settings-changed"));
-}
-
-export function useAiSettings(): AiSettings | null {
-  const [settings, setSettings] = useState<AiSettings | null>(null);
-  useEffect(() => {
-    setSettings(readAiSettings());
-    const onChange = () => setSettings(readAiSettings());
-    window.addEventListener("papers:ai-settings-changed", onChange);
-    window.addEventListener("storage", onChange);
-    return () => {
-      window.removeEventListener("papers:ai-settings-changed", onChange);
-      window.removeEventListener("storage", onChange);
-    };
-  }, []);
-  return settings;
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { READER_TOKENS, type LibraryPaper } from "@/lib/paper-data";
 import { suggestionMatches, type AiFolder } from "@/lib/ai-folders";
-import { useAiSettings } from "@/lib/ai-settings";
+import { useAiSettings } from "@/lib/use-ai-settings";
 
 export function SuggestFolders({
   library,

@@ -6,9 +6,9 @@ import { READER_TOKENS } from "@/lib/paper-data";
 import {
   PROVIDERS,
   readAiSettings,
-  useAiSettings,
   writeAiSettings,
 } from "@/lib/ai-settings";
+import { useAiSettings } from "@/lib/use-ai-settings";
 
 const ASK_CHIPS = [
   {

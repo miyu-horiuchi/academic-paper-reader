@@ -49,13 +49,9 @@ export function AskAI({
   const [loading, setLoading] = useState(false);
   const [chip, setChip] = useState<string | null>(null);
   const settings = useAiSettings();
-  const providerEntry = settings
-    ? PROVIDERS.find((p) => p.id === settings.provider)
+  const providerLabel = settings
+    ? (PROVIDERS.find((p) => p.id === settings.provider)?.modelLabel ?? null)
     : null;
-  const providerLabel =
-    settings && settings.provider === "openrouter" && settings.model
-      ? `OpenRouter · ${settings.model.split("/").pop()}`
-      : (providerEntry?.modelLabel ?? null);
 
   const run = async (prompt: string, chipId: string | null) => {
     if (!settings) return;
@@ -71,7 +67,6 @@ export function AskAI({
           prompt,
           provider: settings.provider,
           apiKey: settings.apiKey,
-          model: settings.model,
         }),
       });
       if (!res.ok) {

@@ -31,9 +31,16 @@ type TabKey =
   | "To-do"
   | "Deadlines";
 
-function folderName(id: FolderKey): string {
-  const f = FOLDERS.find((entry) => entry.type !== "divider" && entry.id === id);
-  return f && f.type !== "divider" ? f.name : "Pinned";
+function folderName(
+  id: FolderKey | string,
+  aiFolders: { id: string; name: string }[] = [],
+): string {
+  const f = FOLDERS.find(
+    (entry) => entry.type !== "divider" && entry.id === id,
+  );
+  if (f && f.type !== "divider") return f.name;
+  const ai = aiFolders.find((x) => x.id === id);
+  return ai?.name ?? "Pinned";
 }
 
 function CollapseToggle({
@@ -388,6 +395,9 @@ export function ReaderShell({
                 dragging={lib.dragging}
                 flashFolder={lib.flashFolder}
                 onDropOnFolder={(pid, fid) => lib.handleDrop(pid, fid)}
+                aiFolders={lib.aiFolders}
+                onAcceptAiFolder={lib.acceptAiFolder}
+                onRemoveAiFolder={lib.removeAiFolder}
               />
             </div>
           </div>
@@ -436,7 +446,7 @@ export function ReaderShell({
                     letterSpacing: -0.1,
                   }}
                 >
-                  {folderName(lib.folderId)}
+                  {folderName(lib.folderId, lib.aiFolders)}
                 </div>
                 <button
                   onClick={() => setAddOpen(true)}
@@ -473,6 +483,7 @@ export function ReaderShell({
                   onSelect={(id) => lib.setPaperId(id)}
                   onDragPaper={(_id, d) => lib.setDragging(d)}
                   query={query}
+                  aiFolders={lib.aiFolders}
                 />
               </div>
             </div>

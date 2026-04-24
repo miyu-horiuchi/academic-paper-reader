@@ -10,6 +10,8 @@ import {
   type FolderKey,
   type LibraryPaper,
 } from "@/lib/paper-data";
+import { suggestionMatches, type AiFolder } from "@/lib/ai-folders";
+import { SuggestFolders } from "./suggest-folders";
 
 function FolderIcon({ kind }: { kind: "library" | "clock" | "pin" | "bookmark" | "folder" }) {
   const s = {
@@ -65,14 +67,20 @@ export function Sidebar({
   onDropOnFolder,
   flashFolder,
   compact = false,
+  aiFolders = [],
+  onAcceptAiFolder,
+  onRemoveAiFolder,
 }: {
   library: LibraryPaper[];
-  selected?: FolderKey;
-  onSelect?: (id: FolderKey) => void;
+  selected?: FolderKey | string;
+  onSelect?: (id: FolderKey | string) => void;
   dragging?: boolean;
   onDropOnFolder?: (paperId: string, folderId: FolderKey) => void;
   flashFolder?: FolderKey | null;
   compact?: boolean;
+  aiFolders?: AiFolder[];
+  onAcceptAiFolder?: (folder: AiFolder) => void;
+  onRemoveAiFolder?: (id: string) => void;
 }) {
   const [overId, setOverId] = useState<FolderKey | null>(null);
 
@@ -192,6 +200,119 @@ export function Sidebar({
           </div>
         );
       })}
+
+      {aiFolders.length > 0 && (
+        <div
+          style={{
+            height: 1,
+            background: READER_TOKENS.rule,
+            margin: "8px 10px",
+          }}
+        />
+      )}
+      {aiFolders.map((f) => {
+        const isSel = f.id === selected;
+        const matched = library.filter((p) => suggestionMatches(p, f)).length;
+        return (
+          <div
+            key={f.id}
+            onClick={() => onSelect?.(f.id)}
+            title={f.why}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: compact ? "6px 10px" : "7px 10px",
+              borderRadius: 5,
+              cursor: "pointer",
+              background: isSel ? READER_TOKENS.accentSoft : "transparent",
+              color: isSel ? READER_TOKENS.ink : READER_TOKENS.ink2,
+              fontSize: 12.5,
+              fontWeight: isSel ? 600 : 400,
+              marginBottom: 1,
+              position: "relative",
+            }}
+          >
+            <span
+              style={{
+                color: isSel ? READER_TOKENS.accent : READER_TOKENS.ink3,
+                display: "flex",
+              }}
+            >
+              <FolderIcon kind="folder" />
+            </span>
+            <span
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {f.name}
+              <span
+                style={{
+                  fontSize: 8.5,
+                  color: READER_TOKENS.accent,
+                  letterSpacing: 0.4,
+                }}
+              >
+                ✦
+              </span>
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                color: READER_TOKENS.ink3,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {matched}
+            </span>
+            {onRemoveAiFolder && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveAiFolder(f.id);
+                }}
+                title="Remove folder"
+                style={{
+                  position: "absolute",
+                  right: 4,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 16,
+                  height: 16,
+                  borderRadius: 3,
+                  border: "none",
+                  background: "transparent",
+                  color: READER_TOKENS.ink3,
+                  fontSize: 14,
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  opacity: 0,
+                  transition: "opacity .12s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.6")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        );
+      })}
+
+      {onAcceptAiFolder && (
+        <SuggestFolders
+          library={library}
+          existing={aiFolders}
+          onAccept={onAcceptAiFolder}
+        />
+      )}
     </div>
   );
 }
@@ -204,18 +325,24 @@ export function LibraryList({
   onDragPaper,
   compact = false,
   query = "",
+  aiFolders = [],
 }: {
   library: LibraryPaper[];
-  folderId?: FolderKey;
+  folderId?: FolderKey | string;
   selected?: string;
   onSelect?: (id: string) => void;
   onDragPaper?: (paperId: string | null, dragging: boolean) => void;
   compact?: boolean;
   query?: string;
+  aiFolders?: AiFolder[];
 }) {
   const q = query.trim().toLowerCase();
+  const activeAi = aiFolders.find((f) => f.id === folderId);
+  const baseMatcher = activeAi
+    ? (p: LibraryPaper) => suggestionMatches(p, activeAi)
+    : (FOLDER_MATCH[folderId as FolderKey] ?? (() => true));
   const items = library
-    .filter(FOLDER_MATCH[folderId] ?? (() => true))
+    .filter(baseMatcher)
     .filter((p) => {
       if (!q) return true;
       return (

@@ -17,7 +17,7 @@ import { AddPaperModal } from "@/app/reader/_components/add-paper-modal";
 import { useLibrary } from "@/app/reader/_components/use-library";
 import type { UserNote } from "@/app/reader/_components/tab-views";
 
-function folderName(id: FolderKey): string {
+function folderName(id: FolderKey | string): string {
   const f = FOLDERS.find((entry) => entry.type !== "divider" && entry.id === id);
   return f && f.type !== "divider" ? f.name : "Pinned";
 }

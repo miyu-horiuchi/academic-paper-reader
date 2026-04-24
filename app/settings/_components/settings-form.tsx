@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { READER_TOKENS } from "@/lib/paper-data";
 import {
   PROVIDERS,
@@ -19,12 +20,15 @@ type TestResult =
   | { kind: "error"; detail: string };
 
 export function SettingsForm() {
+  const searchParams = useSearchParams();
   const [provider, setProvider] = useState<ProviderId>("anthropic");
   const [apiKey, setApiKey] = useState("");
   const [authMethod, setAuthMethod] = useState<AiAuthMethod>("key");
+  const [projectId, setProjectId] = useState("");
   const [saved, setSaved] = useState(false);
   const [show, setShow] = useState(false);
   const [test, setTest] = useState<TestResult>({ kind: "idle" });
+  const [geminiFlash, setGeminiFlash] = useState<string | null>(null);
 
   useEffect(() => {
     const existing = readAiSettings();
@@ -32,15 +36,44 @@ export function SettingsForm() {
       setProvider(existing.provider);
       setApiKey(existing.apiKey);
       setAuthMethod(existing.authMethod ?? "key");
+      setProjectId(existing.projectId ?? "");
     }
-  }, []);
+    if (searchParams.get("gemini_connected")) {
+      setGeminiFlash("Connected to Google. Enter your GCP project ID and save.");
+      setProvider("google");
+      setAuthMethod("google-oauth");
+      setTimeout(() => setGeminiFlash(null), 4000);
+    } else if (searchParams.get("gemini_error")) {
+      setGeminiFlash(
+        `Google sign-in failed: ${searchParams.get("gemini_error")}`,
+      );
+      setTimeout(() => setGeminiFlash(null), 6000);
+    }
+  }, [searchParams]);
 
   const entry = PROVIDERS.find((p) => p.id === provider)!;
 
   const onSave = () => {
     const trimmed = apiKey.trim();
     if (!trimmed) return;
-    writeAiSettings({ provider, apiKey: trimmed, authMethod });
+    const existing = readAiSettings();
+    writeAiSettings({
+      provider,
+      apiKey: trimmed,
+      authMethod,
+      projectId:
+        provider === "google" && authMethod === "google-oauth"
+          ? projectId.trim() || undefined
+          : undefined,
+      refreshToken:
+        provider === "google" && authMethod === "google-oauth"
+          ? existing?.refreshToken
+          : undefined,
+      expiresAt:
+        provider === "google" && authMethod === "google-oauth"
+          ? existing?.expiresAt
+          : undefined,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 1400);
   };
@@ -68,6 +101,9 @@ export function SettingsForm() {
           provider,
           apiKey: trimmed,
           authMethod,
+          projectId: projectId.trim() || undefined,
+          refreshToken: readAiSettings()?.refreshToken,
+          expiresAt: readAiSettings()?.expiresAt,
         }),
       });
       if (res.ok) {
@@ -139,6 +175,138 @@ export function SettingsForm() {
           })}
         </div>
       </div>
+
+      {geminiFlash && (
+        <div
+          style={{
+            padding: "10px 14px",
+            borderRadius: 6,
+            fontSize: 12.5,
+            background: "rgba(47,177,114,.12)",
+            color: "#207d50",
+            border: `1px solid rgba(47,177,114,.3)`,
+          }}
+        >
+          {geminiFlash}
+        </div>
+      )}
+
+      {provider === "google" && (
+        <div>
+          <label style={label}>Method</label>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(
+              [
+                { id: "key", label: "API key" },
+                { id: "google-oauth", label: "Sign in with Google" },
+              ] as const
+            ).map((m) => {
+              const active = authMethod === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    setAuthMethod(m.id);
+                    setApiKey("");
+                    setTest({ kind: "idle" });
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    border: `1px solid ${active ? READER_TOKENS.accent : READER_TOKENS.rule}`,
+                    background: active ? READER_TOKENS.accentSoft : "#fffdf7",
+                    color: READER_TOKENS.ink,
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 500,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          {authMethod === "google-oauth" && (
+            <>
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: "10px 12px",
+                  background: "rgba(184,135,61,.08)",
+                  border: `1px solid ${READER_TOKENS.rule}`,
+                  borderRadius: 6,
+                  fontSize: 11.5,
+                  lineHeight: 1.55,
+                  color: READER_TOKENS.ink2,
+                }}
+              >
+                <strong style={{ color: READER_TOKENS.ink }}>
+                  Needs a Google Cloud Project with Vertex AI enabled.
+                </strong>
+                <br />
+                Click below to sign in with Google. After returning here, enter
+                the GCP project ID that has Vertex AI enabled.{" "}
+                <a
+                  href="https://console.cloud.google.com/vertex-ai"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: READER_TOKENS.accent,
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Open Vertex AI console →
+                </a>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/api/auth/google-gemini/start";
+                }}
+                style={{
+                  marginTop: 10,
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: READER_TOKENS.ink,
+                  color: "#fffdf7",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Sign in with Google
+              </button>
+              <label style={{ ...label, marginTop: 16 }}>
+                GCP project ID
+              </label>
+              <input
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                placeholder="my-gcp-project"
+                style={{
+                  width: "100%",
+                  border: `1px solid ${READER_TOKENS.rule}`,
+                  borderRadius: 6,
+                  padding: "9px 12px",
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontSize: 12.5,
+                  color: READER_TOKENS.ink,
+                  background: "#fffdf7",
+                  outline: "none",
+                }}
+              />
+            </>
+          )}
+        </div>
+      )}
 
       {provider === "openai" && (
         <div>
@@ -232,6 +400,7 @@ export function SettingsForm() {
         </div>
       )}
 
+      {!(provider === "google" && authMethod === "google-oauth") && (
       <div>
         <label style={label} htmlFor="ai-key">
           {provider === "openai" && authMethod === "codex-oauth"
@@ -309,6 +478,7 @@ export function SettingsForm() {
           . Keys stay in this browser; nothing is synced to a server.
         </div>
       </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button

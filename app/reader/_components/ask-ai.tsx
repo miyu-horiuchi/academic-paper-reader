@@ -3,7 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { READER_TOKENS } from "@/lib/paper-data";
-import { PROVIDERS, useAiSettings } from "@/lib/ai-settings";
+import {
+  PROVIDERS,
+  readAiSettings,
+  useAiSettings,
+  writeAiSettings,
+} from "@/lib/ai-settings";
 
 const ASK_CHIPS = [
   {
@@ -68,6 +73,9 @@ export function AskAI({
           provider: settings.provider,
           apiKey: settings.apiKey,
           authMethod: settings.authMethod,
+          projectId: settings.projectId,
+          refreshToken: settings.refreshToken,
+          expiresAt: settings.expiresAt,
         }),
       });
       if (!res.ok) {
@@ -76,15 +84,30 @@ export function AskAI({
           setAnswer(
             "Your API key was rejected by the provider. Update it in Settings.",
           );
-        } else if (data?.error === "no_key") {
-          setAnswer("Configure an AI provider in Settings.");
+        } else if (data?.error === "no_key" || data?.error === "no_project") {
+          setAnswer(
+            data?.message ?? "Configure an AI provider in Settings.",
+          );
         } else {
           setAnswer(
             `Could not reach the AI. ${data?.detail ?? "Try again."}`,
           );
         }
       } else {
-        const data = (await res.json()) as { text?: string };
+        const data = (await res.json()) as {
+          text?: string;
+          refreshed?: { access_token: string; expires_at: number };
+        };
+        if (data.refreshed) {
+          const current = readAiSettings();
+          if (current) {
+            writeAiSettings({
+              ...current,
+              apiKey: data.refreshed.access_token,
+              expiresAt: data.refreshed.expires_at,
+            });
+          }
+        }
         setAnswer(data.text ?? "");
       }
     } catch {

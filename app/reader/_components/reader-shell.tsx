@@ -10,6 +10,7 @@ import {
 } from "@/lib/paper-data";
 import Link from "next/link";
 import { PapersIcon } from "@/components/papers-icon";
+import { AccountChip } from "@/components/account-chip";
 import { PaperReader } from "./paper-reader";
 import { Sidebar, LibraryList } from "./library-panes";
 import { AddPaperModal } from "./add-paper-modal";
@@ -165,6 +166,7 @@ function TopBar({
   tab,
   setTab,
   onNewPaper,
+  userName,
   userEmail,
   onSignOut,
   query,
@@ -176,13 +178,13 @@ function TopBar({
   tab: TabKey;
   setTab: (t: TabKey) => void;
   onNewPaper: () => void;
+  userName?: string | null;
   userEmail?: string | null;
   onSignOut?: () => void;
   query: string;
   setQuery: (q: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
 }) {
-  const initial = userEmail?.[0]?.toUpperCase() ?? "M";
   const tabs: TabKey[] = ["Library", "Highlights", "Notes", "Graph", "To-do"];
   return (
     <div
@@ -342,37 +344,21 @@ function TopBar({
           <path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.76 2.76l1.41 1.41M9.83 9.83l1.41 1.41M2.76 11.24l1.41-1.41M9.83 4.17l1.41-1.41" />
         </svg>
       </Link>
-      {onSignOut && (
-        <button
-          onClick={onSignOut}
-          title={userEmail ?? "Sign out"}
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            background: READER_TOKENS.accent,
-            color: "#fffdf7",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 11,
-            fontWeight: 600,
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
-          {initial}
-        </button>
-      )}
+      <AccountChip
+        name={userName}
+        email={userEmail}
+        onSignOut={onSignOut}
+      />
     </div>
   );
 }
 
 export function ReaderShell({
+  userName,
   userEmail,
   signOutAction,
 }: {
+  userName?: string | null;
   userEmail?: string | null;
   signOutAction?: () => Promise<void>;
 }) {
@@ -427,6 +413,7 @@ export function ReaderShell({
         tab={tab}
         setTab={setTab}
         onNewPaper={() => setAddOpen(true)}
+        userName={userName}
         userEmail={userEmail}
         onSignOut={signOutAction ? () => void signOutAction() : undefined}
         query={query}

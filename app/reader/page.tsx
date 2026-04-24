@@ -12,6 +12,10 @@ export default async function Reader() {
   }
 
   return (
-    <ReaderShell userEmail={session.user.email} signOutAction={doSignOut} />
+    <ReaderShell
+      userName={session.user.name}
+      userEmail={session.user.email}
+      signOutAction={doSignOut}
+    />
   );
 }

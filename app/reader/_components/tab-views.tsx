@@ -1278,3 +1278,585 @@ export function TodoView({
     </div>
   );
 }
+
+type Deadline = {
+  id: string;
+  name: string;
+  date: string;
+  link: string;
+  note: string;
+};
+
+const SEED_DEADLINES: Deadline[] = [
+  {
+    id: "d1",
+    name: "NeurIPS 2026 paper submission",
+    date: "2026-05-15",
+    link: "https://neurips.cc/Conferences/2026/CallForPapers",
+    note: "Full paper + supplementary",
+  },
+  {
+    id: "d2",
+    name: "ICLR camera-ready",
+    date: "2026-05-01",
+    link: "https://openreview.net",
+    note: "Address reviewer 3 comments",
+  },
+  {
+    id: "d3",
+    name: "Advisor meeting · Ch. 3 draft",
+    date: "2026-04-28",
+    link: "",
+    note: "Bring attention analysis",
+  },
+  {
+    id: "d4",
+    name: "CVPR workshop proposal",
+    date: "2026-06-10",
+    link: "https://cvpr.thecvf.com",
+    note: "",
+  },
+  {
+    id: "d5",
+    name: "Thesis proposal defense",
+    date: "2026-07-22",
+    link: "",
+    note: "Committee: AS, LW, MK",
+  },
+];
+
+type DateParts = { full: string; rel: string; days: number };
+
+function fmtDateParts(iso: string): DateParts {
+  if (!iso) return { full: "—", rel: "", days: Number.POSITIVE_INFINITY };
+  const d = new Date(iso + "T12:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+  const full = d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  let rel = "";
+  if (days < 0) rel = `${Math.abs(days)}d overdue`;
+  else if (days === 0) rel = "Today";
+  else if (days === 1) rel = "Tomorrow";
+  else if (days < 14) rel = `in ${days} days`;
+  else rel = `in ${Math.round(days / 7)} wk`;
+  return { full, rel, days };
+}
+
+type SortKey = keyof Deadline;
+type Editing = { id: string; field: keyof Deadline } | null;
+
+const DEADLINES_STORAGE_KEY = "papers.deadlines.v1";
+
+export function DeadlinesView() {
+  const [rows, setRows] = useState<Deadline[]>(SEED_DEADLINES);
+  const [sortBy, setSortBy] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [editing, setEditing] = useState<Editing>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    try {
+      const rawRows = window.localStorage.getItem(DEADLINES_STORAGE_KEY);
+      if (rawRows) {
+        const parsed = JSON.parse(rawRows) as Deadline[];
+        if (Array.isArray(parsed)) setRows(parsed);
+      }
+    } catch {}
+
+    fetch("/api/deadlines")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data && Array.isArray(data.rows)) {
+          setRows(data.rows);
+        } else if (data && data.rows === null) {
+          setRows(SEED_DEADLINES);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(DEADLINES_STORAGE_KEY, JSON.stringify(rows));
+    } catch {}
+    const t = setTimeout(() => {
+      fetch("/api/deadlines", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ rows }),
+      }).catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
+  }, [rows, hydrated]);
+
+  const toggleSort = (k: SortKey) => {
+    if (sortBy === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortBy(k);
+      setSortDir("asc");
+    }
+  };
+
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortBy] ?? "";
+    const bv = b[sortBy] ?? "";
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const update = (id: string, field: keyof Deadline, v: string) =>
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [field]: v } : r)));
+  const remove = (id: string) =>
+    setRows((rs) => rs.filter((r) => r.id !== id));
+  const addRow = () => {
+    const id = "d" + Date.now();
+    setRows((rs) => [
+      ...rs,
+      { id, name: "", date: "", link: "", note: "" },
+    ]);
+    setEditing({ id, field: "name" });
+  };
+
+  const cols: { id: SortKey; label: string; width: string }[] = [
+    { id: "name", label: "Name", width: "34%" },
+    { id: "date", label: "Deadline", width: "22%" },
+    { id: "link", label: "Link", width: "24%" },
+    { id: "note", label: "Notes", width: "20%" },
+  ];
+
+  const withinWeek = rows.filter((r) => {
+    const p = fmtDateParts(r.date);
+    return p.days >= 0 && p.days <= 7;
+  }).length;
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+        background: READER_TOKENS.paper,
+      }}
+    >
+      <TabHeader
+        title="Deadlines"
+        subtitle={`${rows.length} tracked · ${withinWeek} within a week`}
+        right={
+          <button
+            onClick={addRow}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 6,
+              border: "none",
+              background: READER_TOKENS.accent,
+              color: "#fffdf7",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: READER_TOKENS.sans,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 11 11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <line x1="5.5" y1="1.5" x2="5.5" y2="9.5" />
+              <line x1="1.5" y1="5.5" x2="9.5" y2="5.5" />
+            </svg>
+            Add deadline
+          </button>
+        }
+      />
+      <div style={{ flex: 1, overflow: "auto", padding: "0 32px 40px" }}>
+        <div
+          style={{
+            marginTop: 16,
+            border: `1px solid ${READER_TOKENS.ruleStrong}`,
+            borderRadius: 8,
+            overflow: "hidden",
+            background: "#fffdf7",
+            boxShadow: "0 1px 2px rgba(60,40,20,.04)",
+            fontFamily: READER_TOKENS.sans,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              background: READER_TOKENS.paperDeep,
+              borderBottom: `1px solid ${READER_TOKENS.ruleStrong}`,
+            }}
+          >
+            {cols.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => toggleSort(c.id)}
+                style={{
+                  width: c.width,
+                  padding: "9px 14px",
+                  borderRight: `1px solid ${READER_TOKENS.rule}`,
+                  fontSize: 10.5,
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                  color: READER_TOKENS.ink3,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  userSelect: "none",
+                }}
+              >
+                {c.label}
+                {sortBy === c.id && (
+                  <svg
+                    width="8"
+                    height="8"
+                    viewBox="0 0 8 8"
+                    style={{ marginLeft: 3 }}
+                    fill="currentColor"
+                  >
+                    <path
+                      d={
+                        sortDir === "asc"
+                          ? "M4 1.5 L7 5.5 H1 Z"
+                          : "M4 6.5 L1 2.5 H7 Z"
+                      }
+                    />
+                  </svg>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {sorted.map((r, rowIdx) => {
+            const parts = fmtDateParts(r.date);
+            const isOverdue = parts.days < 0 && parts.days !== Number.POSITIVE_INFINITY;
+            const isSoon = parts.days >= 0 && parts.days <= 7;
+            const alt = rowIdx % 2 !== 0;
+            return (
+              <div
+                key={r.id}
+                style={{
+                  display: "flex",
+                  minHeight: 38,
+                  borderBottom: `1px solid ${READER_TOKENS.rule}`,
+                  background: alt ? "rgba(60,45,30,.02)" : "transparent",
+                  position: "relative",
+                }}
+              >
+                <DeadlineCell
+                  width={cols[0].width}
+                  editing={editing?.id === r.id && editing?.field === "name"}
+                  value={r.name}
+                  placeholder="Untitled"
+                  onEdit={() => setEditing({ id: r.id, field: "name" })}
+                  onSave={(v) => {
+                    update(r.id, "name", v);
+                    setEditing(null);
+                  }}
+                  onCancel={() => setEditing(null)}
+                  renderValue={(v) => (
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        color: READER_TOKENS.ink,
+                        fontFamily: READER_TOKENS.serif,
+                        fontSize: 13.5,
+                      }}
+                    >
+                      {v || (
+                        <span
+                          style={{
+                            color: READER_TOKENS.ink3,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Untitled
+                        </span>
+                      )}
+                    </span>
+                  )}
+                />
+                <DeadlineCell
+                  width={cols[1].width}
+                  editing={editing?.id === r.id && editing?.field === "date"}
+                  value={r.date}
+                  type="date"
+                  onEdit={() => setEditing({ id: r.id, field: "date" })}
+                  onSave={(v) => {
+                    update(r.id, "date", v);
+                    setEditing(null);
+                  }}
+                  onCancel={() => setEditing(null)}
+                  renderValue={() => (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12.5,
+                          color: READER_TOKENS.ink,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {parts.full}
+                      </span>
+                      {parts.rel && (
+                        <span
+                          style={{
+                            padding: "1px 7px",
+                            borderRadius: 9,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            letterSpacing: 0.3,
+                            background: isOverdue
+                              ? "rgba(176,74,58,.14)"
+                              : isSoon
+                                ? "rgba(201,154,74,.18)"
+                                : "rgba(60,45,30,.08)",
+                            color: isOverdue
+                              ? "#b04a3a"
+                              : isSoon
+                                ? "#8a6a1a"
+                                : READER_TOKENS.ink3,
+                          }}
+                        >
+                          {parts.rel}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                />
+                <DeadlineCell
+                  width={cols[2].width}
+                  editing={editing?.id === r.id && editing?.field === "link"}
+                  value={r.link}
+                  placeholder="https://…"
+                  onEdit={() => setEditing({ id: r.id, field: "link" })}
+                  onSave={(v) => {
+                    update(r.id, "link", v);
+                    setEditing(null);
+                  }}
+                  onCancel={() => setEditing(null)}
+                  renderValue={(v) =>
+                    v ? (
+                      <a
+                        href={v}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          color: READER_TOKENS.accent,
+                          fontSize: 12.5,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          maxWidth: "100%",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 10 10"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                        >
+                          <path d="M4.5 2.5H2v5.5h5.5V5.5M6 1.5h2.5V4M4.5 5.5 8.5 1.5" />
+                        </svg>
+                        {(() => {
+                          try {
+                            return new URL(v).hostname.replace(/^www\./, "");
+                          } catch {
+                            return v;
+                          }
+                        })()}
+                      </a>
+                    ) : (
+                      <span
+                        style={{
+                          color: READER_TOKENS.ink3,
+                          fontSize: 12,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        —
+                      </span>
+                    )
+                  }
+                />
+                <DeadlineCell
+                  width={cols[3].width}
+                  last
+                  editing={editing?.id === r.id && editing?.field === "note"}
+                  value={r.note}
+                  placeholder="Add note"
+                  onEdit={() => setEditing({ id: r.id, field: "note" })}
+                  onSave={(v) => {
+                    update(r.id, "note", v);
+                    setEditing(null);
+                  }}
+                  onCancel={() => setEditing(null)}
+                  renderValue={(v) => (
+                    <span
+                      style={{
+                        color: v ? READER_TOKENS.ink2 : READER_TOKENS.ink3,
+                        fontSize: 12,
+                        fontStyle: v ? "normal" : "italic",
+                      }}
+                    >
+                      {v || "Add note"}
+                    </span>
+                  )}
+                />
+                <button
+                  onClick={() => remove(r.id)}
+                  title="Delete row"
+                  style={{
+                    position: "absolute",
+                    right: 6,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 20,
+                    height: 20,
+                    borderRadius: 4,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    color: READER_TOKENS.ink3,
+                    fontSize: 15,
+                    lineHeight: 1,
+                    opacity: 0.45,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+
+          <div
+            onClick={addRow}
+            style={{
+              padding: "10px 14px",
+              fontSize: 12,
+              color: READER_TOKENS.ink3,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add deadline
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeadlineCell({
+  width,
+  editing,
+  value,
+  type = "text",
+  placeholder,
+  onEdit,
+  onSave,
+  onCancel,
+  renderValue,
+  last,
+}: {
+  width: string;
+  editing: boolean;
+  value: string;
+  type?: string;
+  placeholder?: string;
+  onEdit: () => void;
+  onSave: (v: string) => void;
+  onCancel: () => void;
+  renderValue: (v: string) => React.ReactNode;
+  last?: boolean;
+}) {
+  const [draft, setDraft] = useState(value || "");
+  useEffect(() => {
+    if (editing) setDraft(value || "");
+  }, [editing, value]);
+
+  return (
+    <div
+      onClick={() => !editing && onEdit()}
+      style={{
+        width,
+        padding: "8px 14px",
+        borderRight: last ? "none" : `1px solid ${READER_TOKENS.rule}`,
+        display: "flex",
+        alignItems: "center",
+        cursor: editing ? "text" : "cell",
+        background: editing ? "#fffbf0" : "transparent",
+        outline: editing ? `2px solid ${READER_TOKENS.accent}` : "none",
+        outlineOffset: -2,
+      }}
+    >
+      {editing ? (
+        <input
+          autoFocus
+          type={type}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSave(draft);
+            if (e.key === "Escape") onCancel();
+          }}
+          onBlur={() => onSave(draft)}
+          placeholder={placeholder}
+          style={{
+            width: "100%",
+            border: "none",
+            background: "transparent",
+            outline: "none",
+            fontFamily: "inherit",
+            fontSize: 13,
+            color: READER_TOKENS.ink,
+            padding: 0,
+          }}
+        />
+      ) : (
+        renderValue(value)
+      )}
+    </div>
+  );
+}

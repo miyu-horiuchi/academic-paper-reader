@@ -16,6 +16,7 @@ import { Sidebar, LibraryList } from "./library-panes";
 import { AddPaperModal } from "./add-paper-modal";
 import { useLibrary } from "./use-library";
 import {
+  DeadlinesView,
   GraphView,
   HighlightsView,
   NotesView,
@@ -23,7 +24,13 @@ import {
   type UserNote,
 } from "./tab-views";
 
-type TabKey = "Library" | "Highlights" | "Notes" | "Graph" | "To-do";
+type TabKey =
+  | "Library"
+  | "Highlights"
+  | "Notes"
+  | "Graph"
+  | "To-do"
+  | "Deadlines";
 
 function folderName(id: FolderKey): string {
   const f = FOLDERS.find((entry) => entry.type !== "divider" && entry.id === id);
@@ -185,7 +192,14 @@ function TopBar({
   setQuery: (q: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
 }) {
-  const tabs: TabKey[] = ["Library", "Highlights", "Notes", "Graph", "To-do"];
+  const tabs: TabKey[] = [
+    "Library",
+    "Highlights",
+    "Notes",
+    "Graph",
+    "To-do",
+    "Deadlines",
+  ];
   return (
     <div
       style={{
@@ -588,6 +602,7 @@ export function ReaderShell({
       {tab === "To-do" && (
         <TodoView library={lib.library} onOpen={openInReader} />
       )}
+      {tab === "Deadlines" && <DeadlinesView />}
     </div>
   );
 }

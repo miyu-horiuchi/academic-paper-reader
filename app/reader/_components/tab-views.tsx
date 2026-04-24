@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   PAPER,
   READER_TOKENS,
@@ -806,6 +806,9 @@ const BUCKETS: TodoItem["due"][] = [
   "Someday",
 ];
 
+const TODOS_STORAGE_KEY = "papers.todos.v1";
+const SCRATCH_STORAGE_KEY = "papers.scratchpad.v1";
+
 export function TodoView({
   library,
   onOpen,
@@ -817,6 +820,36 @@ export function TodoView({
   const [filter, setFilter] = useState<TodoFilter>("open");
   const [input, setInput] = useState("");
   const [scratch, setScratch] = useState("");
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const rawTodos = window.localStorage.getItem(TODOS_STORAGE_KEY);
+      if (rawTodos) {
+        const parsed = JSON.parse(rawTodos) as TodoItem[];
+        if (Array.isArray(parsed)) setTodos(parsed);
+      }
+      const rawScratch = window.localStorage.getItem(SCRATCH_STORAGE_KEY);
+      if (rawScratch !== null) setScratch(rawScratch);
+    } catch {
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos));
+    } catch {}
+  }, [todos, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(SCRATCH_STORAGE_KEY, scratch);
+    } catch {}
+  }, [scratch, hydrated]);
 
   const toggle = (id: string) =>
     setTodos((ts) =>

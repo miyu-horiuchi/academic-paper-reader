@@ -39,11 +39,18 @@ export const PROVIDERS = [
 
 export type ProviderId = (typeof PROVIDERS)[number]["id"];
 
+export type AiAuthMethod = "key" | "codex-oauth" | "google-oauth";
+
 export type AiSettings = {
   provider: ProviderId;
   apiKey: string;
-  /** Reserved for future use (e.g. OAuth access tokens vs API keys). */
-  authMethod?: "key" | "oauth";
+  authMethod?: AiAuthMethod;
+  /** For google-oauth: the GCP project id that hosts Vertex AI. */
+  projectId?: string;
+  /** For google-oauth: refresh token to mint new access tokens on expiry. */
+  refreshToken?: string;
+  /** For google-oauth: access token expiry in ms epoch. */
+  expiresAt?: number;
 };
 
 const STORAGE_KEY = "papers.ai.settings.v1";
@@ -60,6 +67,9 @@ export function readAiSettings(): AiSettings | null {
       provider: parsed.provider as ProviderId,
       apiKey: parsed.apiKey,
       authMethod: parsed.authMethod ?? "key",
+      projectId: parsed.projectId,
+      refreshToken: parsed.refreshToken,
+      expiresAt: parsed.expiresAt,
     };
   } catch {
     return null;

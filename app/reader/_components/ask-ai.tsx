@@ -67,6 +67,7 @@ export function AskAI({
           prompt,
           provider: settings.provider,
           apiKey: settings.apiKey,
+          authMethod: settings.authMethod,
         }),
       });
       if (!res.ok) {

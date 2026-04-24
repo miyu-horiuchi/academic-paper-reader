@@ -7,6 +7,7 @@ import {
   readAiSettings,
   writeAiSettings,
   clearAiSettings,
+  type AiAuthMethod,
   type ProviderId,
 } from "@/lib/ai-settings";
 
@@ -20,6 +21,7 @@ type TestResult =
 export function SettingsForm() {
   const [provider, setProvider] = useState<ProviderId>("anthropic");
   const [apiKey, setApiKey] = useState("");
+  const [authMethod, setAuthMethod] = useState<AiAuthMethod>("key");
   const [saved, setSaved] = useState(false);
   const [show, setShow] = useState(false);
   const [test, setTest] = useState<TestResult>({ kind: "idle" });
@@ -29,6 +31,7 @@ export function SettingsForm() {
     if (existing) {
       setProvider(existing.provider);
       setApiKey(existing.apiKey);
+      setAuthMethod(existing.authMethod ?? "key");
     }
   }, []);
 
@@ -37,7 +40,7 @@ export function SettingsForm() {
   const onSave = () => {
     const trimmed = apiKey.trim();
     if (!trimmed) return;
-    writeAiSettings({ provider, apiKey: trimmed });
+    writeAiSettings({ provider, apiKey: trimmed, authMethod });
     setSaved(true);
     setTimeout(() => setSaved(false), 1400);
   };
@@ -64,6 +67,7 @@ export function SettingsForm() {
           prompt: "Reply with the single word: ok",
           provider,
           apiKey: trimmed,
+          authMethod,
         }),
       });
       if (res.ok) {
@@ -110,7 +114,10 @@ export function SettingsForm() {
                 onClick={() => {
                   setProvider(p.id);
                   setTest({ kind: "idle" });
-                  if (p.id !== provider) setApiKey("");
+                  if (p.id !== provider) {
+                    setApiKey("");
+                    setAuthMethod("key");
+                  }
                 }}
                 style={{
                   textAlign: "left",
@@ -133,9 +140,103 @@ export function SettingsForm() {
         </div>
       </div>
 
+      {provider === "openai" && (
+        <div>
+          <label style={label}>Method</label>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(
+              [
+                { id: "key", label: "API key" },
+                { id: "codex-oauth", label: "Codex token" },
+              ] as const
+            ).map((m) => {
+              const active = authMethod === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    setAuthMethod(m.id);
+                    setApiKey("");
+                    setTest({ kind: "idle" });
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    border: `1px solid ${active ? READER_TOKENS.accent : READER_TOKENS.rule}`,
+                    background: active ? READER_TOKENS.accentSoft : "#fffdf7",
+                    color: READER_TOKENS.ink,
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 500,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          {authMethod === "codex-oauth" && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: "10px 12px",
+                background: "rgba(184,135,61,.08)",
+                border: `1px solid ${READER_TOKENS.rule}`,
+                borderRadius: 6,
+                fontSize: 11.5,
+                lineHeight: 1.55,
+                color: READER_TOKENS.ink2,
+              }}
+            >
+              <strong style={{ color: READER_TOKENS.ink }}>
+                Experimental — uses your ChatGPT subscription.
+              </strong>
+              <br />
+              On your machine, install Codex CLI and run{" "}
+              <code
+                style={{
+                  background: "#fffdf7",
+                  padding: "0 4px",
+                  borderRadius: 3,
+                }}
+              >
+                codex login
+              </code>
+              . Then open{" "}
+              <code
+                style={{
+                  background: "#fffdf7",
+                  padding: "0 4px",
+                  borderRadius: 3,
+                }}
+              >
+                ~/.codex/auth.json
+              </code>
+              , copy the{" "}
+              <code
+                style={{
+                  background: "#fffdf7",
+                  padding: "0 4px",
+                  borderRadius: 3,
+                }}
+              >
+                access_token
+              </code>{" "}
+              value, and paste below. Responses may be in a coding-agent voice;
+              OpenAI may revoke this path without notice.
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <label style={label} htmlFor="ai-key">
-          API key
+          {provider === "openai" && authMethod === "codex-oauth"
+            ? "Codex access token"
+            : "API key"}
         </label>
         <div style={{ display: "flex", gap: 6 }}>
           <input
@@ -149,7 +250,11 @@ export function SettingsForm() {
               setTest({ kind: "idle" });
             }}
             placeholder={
-              entry.keyPrefix ? `${entry.keyPrefix}...` : "paste your API key"
+              authMethod === "codex-oauth"
+                ? "eyJhbGciOi... (from ~/.codex/auth.json)"
+                : entry.keyPrefix
+                  ? `${entry.keyPrefix}...`
+                  : "paste your API key"
             }
             style={{
               flex: 1,

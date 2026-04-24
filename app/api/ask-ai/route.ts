@@ -4,17 +4,35 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createXai } from "@ai-sdk/xai";
 import { auth } from "@/auth";
-import { PROVIDERS, type ProviderId } from "@/lib/ai-settings";
+import {
+  PROVIDERS,
+  type AiAuthMethod,
+  type ProviderId,
+} from "@/lib/ai-settings";
 
 export const runtime = "nodejs";
 
-function buildModel(provider: ProviderId, apiKey: string): LanguageModel {
+const CODEX_SYSTEM_PROMPT =
+  "You are Codex, based on GPT-5. You are running as a coding agent in the Codex CLI on a user's computer.";
+
+function buildModel(
+  provider: ProviderId,
+  apiKey: string,
+  authMethod: AiAuthMethod,
+): LanguageModel {
   const entry = PROVIDERS.find((p) => p.id === provider);
   if (!entry) throw new Error(`unknown provider: ${provider}`);
   switch (provider) {
     case "anthropic":
       return createAnthropic({ apiKey })(entry.model);
     case "openai":
+      if (authMethod === "codex-oauth") {
+        return createOpenAI({
+          apiKey,
+          baseURL: "https://api.openai.com/v1",
+          headers: { "OpenAI-Beta": "responses=experimental" },
+        })("gpt-5");
+      }
       return createOpenAI({ apiKey })(entry.model);
     case "google":
       return createGoogleGenerativeAI({ apiKey })(entry.model);
@@ -36,6 +54,7 @@ export async function POST(req: Request) {
     prompt?: string;
     provider?: ProviderId;
     apiKey?: string;
+    authMethod?: AiAuthMethod;
   };
 
   const {
@@ -45,6 +64,7 @@ export async function POST(req: Request) {
     prompt = "",
     provider,
     apiKey,
+    authMethod = "key",
   } = body;
 
   if (!provider || !apiKey) {
@@ -73,9 +93,12 @@ export async function POST(req: Request) {
   ].join("\n");
 
   try {
-    const langModel = buildModel(provider, apiKey);
+    const langModel = buildModel(provider, apiKey, authMethod);
+    const system =
+      authMethod === "codex-oauth" ? CODEX_SYSTEM_PROMPT : undefined;
     const { text } = await generateText({
       model: langModel,
+      system,
       prompt: fullPrompt,
     });
     return Response.json({ text });

@@ -522,10 +522,15 @@ export function ReaderShell({
             <PaperReader
               level={level}
               paperId={lib.paperId}
+              library={lib.library}
               onImport={() => setAddOpen(true)}
               onSaveNote={(note) => setUserNotes((prev) => [...prev, note])}
             />
-            <AddPaperModal open={addOpen} onClose={() => setAddOpen(false)} />
+            <AddPaperModal
+              open={addOpen}
+              onClose={() => setAddOpen(false)}
+              onAdd={(payload) => lib.addPaper(payload)}
+            />
           </div>
         </div>
       )}

@@ -266,6 +266,9 @@ export type LibraryPaper = {
   updated: string;
   tags: string[];
   unread?: number;
+  url?: string;
+  source?: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
+  venue?: string;
 };
 
 export type FolderKey =

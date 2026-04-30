@@ -453,7 +453,14 @@ function ExplainPopover({
   );
 }
 
-function StubReader({ entry, onImport }: { entry: LibraryPaper; onImport?: () => void }) {
+function StubReader({
+  entry,
+  onImport,
+}: {
+  entry: LibraryPaper;
+  onImport?: () => void;
+}) {
+  const hasSource = Boolean(entry.url);
   return (
     <div
       style={{
@@ -482,7 +489,7 @@ function StubReader({ entry, onImport }: { entry: LibraryPaper; onImport?: () =>
             marginBottom: 10,
           }}
         >
-          {entry.folder}
+          {entry.venue ?? entry.folder}
         </div>
         <h1
           style={{
@@ -549,7 +556,7 @@ function StubReader({ entry, onImport }: { entry: LibraryPaper; onImport?: () =>
               marginBottom: 6,
             }}
           >
-            Not imported yet
+            {hasSource ? "Added — open the source to read" : "Not imported yet"}
           </div>
           <div
             style={{
@@ -559,24 +566,47 @@ function StubReader({ entry, onImport }: { entry: LibraryPaper; onImport?: () =>
               marginBottom: 20,
             }}
           >
-            Drop the PDF or paste the arXiv link to parse this paper. Explanations, term definitions, and diagrams will be generated automatically.
+            {hasSource
+              ? "Reader-side parsing for explanations, terms, and diagrams isn’t built yet. For now, open the source on its host."
+              : "Drop the PDF or paste the arXiv link to parse this paper. Explanations, term definitions, and diagrams will be generated automatically."}
           </div>
-          <button
-            onClick={onImport}
-            style={{
-              fontFamily: READER_TOKENS.sans,
-              fontSize: 12.5,
-              fontWeight: 500,
-              padding: "7px 14px",
-              borderRadius: 6,
-              cursor: "pointer",
-              background: READER_TOKENS.accent,
-              color: "#fffdf7",
-              border: "none",
-            }}
-          >
-            Import paper
-          </button>
+          {hasSource ? (
+            <a
+              href={entry.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: READER_TOKENS.sans,
+                fontSize: 12.5,
+                fontWeight: 500,
+                padding: "7px 14px",
+                borderRadius: 6,
+                background: READER_TOKENS.accent,
+                color: "#fffdf7",
+                textDecoration: "none",
+                display: "inline-block",
+              }}
+            >
+              Open source ↗
+            </a>
+          ) : (
+            <button
+              onClick={onImport}
+              style={{
+                fontFamily: READER_TOKENS.sans,
+                fontSize: 12.5,
+                fontWeight: 500,
+                padding: "7px 14px",
+                borderRadius: 6,
+                cursor: "pointer",
+                background: READER_TOKENS.accent,
+                color: "#fffdf7",
+                border: "none",
+              }}
+            >
+              Import paper
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -586,11 +616,13 @@ function StubReader({ entry, onImport }: { entry: LibraryPaper; onImport?: () =>
 export function PaperReader({
   level,
   paperId = "attention",
+  library,
   onImport,
   onSaveNote,
 }: {
   level: Level;
   paperId?: string;
+  library?: LibraryPaper[];
   onImport?: () => void;
   onSaveNote?: (note: UserNote) => void;
 }) {
@@ -633,7 +665,8 @@ export function PaperReader({
   }, []);
 
   const isFull = paperId === PAPER.id;
-  const entry = LIBRARY.find((p) => p.id === paperId) ?? LIBRARY[0];
+  const lookup = library ?? LIBRARY;
+  const entry = lookup.find((p) => p.id === paperId) ?? lookup[0] ?? LIBRARY[0];
 
   if (!isFull) {
     return <StubReader entry={entry} onImport={onImport} />;

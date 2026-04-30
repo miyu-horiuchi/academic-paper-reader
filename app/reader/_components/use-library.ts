@@ -72,6 +72,45 @@ export function useLibrary(
     setAiFolders((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
+  const addPaper = useCallback(
+    (payload: {
+      title: string;
+      authors: string;
+      year: string | null;
+      url: string;
+      venue: string | null;
+      source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
+    }): string => {
+      const id = `imp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const yearNum = Number.parseInt(payload.year ?? "", 10);
+      const tagBySource: Record<typeof payload.source, string> = {
+        arxiv: "arxiv",
+        biorxiv: "preprint",
+        medrxiv: "preprint",
+        doi: "journal",
+        url: "web",
+      };
+      const entry: LibraryPaper = {
+        id,
+        title: payload.title || "Untitled",
+        authors: payload.authors || "Unknown authors",
+        year: Number.isFinite(yearNum) ? yearNum : new Date().getFullYear(),
+        folder: "ML Foundations",
+        pinned: false,
+        updated: "just now",
+        tags: [tagBySource[payload.source]],
+        url: payload.url,
+        source: payload.source,
+        venue: payload.venue ?? undefined,
+      };
+      setLibrary((lib) => [entry, ...lib]);
+      setPaperId(id);
+      setFolderId("recent");
+      return id;
+    },
+    [],
+  );
+
   const paper = library.find((p) => p.id === paperId) ?? library[0];
   return {
     library,
@@ -87,5 +126,6 @@ export function useLibrary(
     aiFolders,
     acceptAiFolder,
     removeAiFolder,
+    addPaper,
   };
 }

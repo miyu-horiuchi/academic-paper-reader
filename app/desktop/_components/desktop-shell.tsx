@@ -499,6 +499,7 @@ export function DesktopShell({
               <PaperReader
                 level={level}
                 paperId={lib.paperId}
+                library={lib.library}
                 onImport={() => setAddOpen(true)}
                 onSaveNote={(note) =>
                   setUserNotes((prev) => [...prev, note])
@@ -507,6 +508,7 @@ export function DesktopShell({
               <AddPaperModal
                 open={addOpen}
                 onClose={() => setAddOpen(false)}
+                onAdd={(payload) => lib.addPaper(payload)}
               />
             </div>
           </div>

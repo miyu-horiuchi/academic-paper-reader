@@ -72,7 +72,14 @@ export function AddPaperModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onAdd?: () => void;
+  onAdd?: (payload: {
+    url: string;
+    source: PreviewData["source"];
+    title: string;
+    authors: string;
+    venue: string | null;
+    year: string | null;
+  }) => void;
 }) {
   const [tab, setTab] = useState<TabId>("upload");
   const [title, setTitle] = useState("");
@@ -534,8 +541,21 @@ export function AddPaperModal({
             Cancel
           </button>
           <button
+            disabled={tab === "url" && preview.kind !== "ok"}
             onClick={() => {
-              onAdd?.();
+              if (tab === "url" && preview.kind === "ok") {
+                onAdd?.({
+                  url: url.trim(),
+                  source: preview.data.source,
+                  title: preview.data.title,
+                  authors: preview.data.authors,
+                  venue: preview.data.venue,
+                  year: preview.data.year,
+                });
+              }
+              setUrl("");
+              setTitle("");
+              setPreview({ kind: "idle" });
               onClose();
             }}
             style={{
@@ -546,7 +566,11 @@ export function AddPaperModal({
               fontSize: 12,
               fontWeight: 600,
               color: "#fffdf7",
-              cursor: "pointer",
+              cursor:
+                tab === "url" && preview.kind !== "ok"
+                  ? "not-allowed"
+                  : "pointer",
+              opacity: tab === "url" && preview.kind !== "ok" ? 0.5 : 1,
               fontFamily: "inherit",
             }}
           >

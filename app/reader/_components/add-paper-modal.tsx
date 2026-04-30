@@ -1,9 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { READER_TOKENS } from "@/lib/paper-data";
 
 type TabId = "upload" | "url" | "paste" | "blank";
+
+type PreviewData = {
+  source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
+  title: string;
+  authors: string;
+  venue: string | null;
+  year: string | null;
+};
+
+type PreviewState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ok"; data: PreviewData }
+  | { kind: "error"; message: string };
 
 const TABS: Array<{
   id: TabId;
@@ -64,6 +78,43 @@ export function AddPaperModal({
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [preview, setPreview] = useState<PreviewState>({ kind: "idle" });
+
+  useEffect(() => {
+    const trimmed = url.trim();
+    if (trimmed.length < 4) {
+      setPreview({ kind: "idle" });
+      return;
+    }
+    const controller = new AbortController();
+    const t = setTimeout(() => {
+      setPreview({ kind: "loading" });
+      fetch(`/api/paper-metadata?url=${encodeURIComponent(trimmed)}`, {
+        signal: controller.signal,
+      })
+        .then(async (res) => {
+          const body = await res.json().catch(() => null);
+          if (!res.ok) {
+            throw new Error(
+              (body as { error?: string } | null)?.error ?? `HTTP ${res.status}`,
+            );
+          }
+          return body as PreviewData;
+        })
+        .then((data) => setPreview({ kind: "ok", data }))
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          setPreview({
+            kind: "error",
+            message: err instanceof Error ? err.message : "lookup failed",
+          });
+        });
+    }, 450);
+    return () => {
+      controller.abort();
+      clearTimeout(t);
+    };
+  }, [url]);
 
   if (!open) return null;
 
@@ -304,7 +355,23 @@ export function AddPaperModal({
                 >
                   Preview
                 </div>
-                {url ? (
+                {preview.kind === "idle" && (
+                  <div style={{ color: READER_TOKENS.ink3, fontStyle: "italic" }}>
+                    Paste a link to preview metadata
+                  </div>
+                )}
+                {preview.kind === "loading" && (
+                  <div style={{ color: READER_TOKENS.ink3, fontStyle: "italic" }}>
+                    Fetching metadata…
+                  </div>
+                )}
+                {preview.kind === "error" && (
+                  <div style={{ color: "#a04a3a", fontSize: 11.5 }}>
+                    Couldn’t resolve this link ({preview.message}). You can still
+                    add it as-is.
+                  </div>
+                )}
+                {preview.kind === "ok" && (
                   <>
                     <div
                       style={{
@@ -313,16 +380,18 @@ export function AddPaperModal({
                         marginBottom: 2,
                       }}
                     >
-                      Attention Is All You Need
+                      {preview.data.title || "Untitled"}
                     </div>
                     <div style={{ color: READER_TOKENS.ink3, fontSize: 11.5 }}>
-                      Vaswani et al. · NeurIPS 2017 · 15 pages
+                      {[
+                        preview.data.authors,
+                        preview.data.venue,
+                        preview.data.year,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "No metadata available"}
                     </div>
                   </>
-                ) : (
-                  <div style={{ color: READER_TOKENS.ink3, fontStyle: "italic" }}>
-                    Paste a link to preview metadata
-                  </div>
                 )}
               </div>
             </div>

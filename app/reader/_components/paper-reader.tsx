@@ -10,6 +10,7 @@ import {
   type HighlightColor,
   type Level,
   type LibraryPaper,
+  type Paper,
   type Section,
 } from "@/lib/paper-data";
 import type { UserNote } from "./tab-views";
@@ -90,6 +91,7 @@ function isSameSentence(
 }
 
 function ExplainPopover({
+  paper,
   hover,
   level,
   pinned,
@@ -100,6 +102,7 @@ function ExplainPopover({
   onCancelNote,
   onSaveNote,
 }: {
+  paper: Paper;
   hover: HoverState;
   level: Level;
   pinned: PinnedState | null;
@@ -149,7 +152,7 @@ function ExplainPopover({
   }
 
   if (hover.kind === "sentence") {
-    const sec = PAPER.sections.find((s) => s.id === hover.sectionId);
+    const sec = paper.sections.find((s) => s.id === hover.sectionId);
     if (!sec) return null;
     const sent = sec.body[hover.sentenceIdx];
     const hoverLocus = { sectionId: hover.sectionId, sentenceIdx: hover.sentenceIdx };
@@ -391,7 +394,7 @@ function ExplainPopover({
         {isPinned && !isEditing && (
           <AskAI
             context={{
-              paperTitle: PAPER.title,
+              paperTitle: paper.title,
               sectionTitle: sec.title,
               quote: sent.text.replace(/\[\[([^\]]+)\]\]/g, "$1"),
             }}
@@ -402,7 +405,7 @@ function ExplainPopover({
     );
   }
 
-  const sec = PAPER.sections.find((s) => s.id === hover.sectionId);
+  const sec = paper.sections.find((s) => s.id === hover.sectionId);
   if (!sec) return null;
   return (
     <div
@@ -455,12 +458,18 @@ function ExplainPopover({
 
 function StubReader({
   entry,
+  ingestState = "idle",
+  onIngestRetry,
   onImport,
 }: {
   entry: LibraryPaper;
+  ingestState?: "idle" | "loading" | "error";
+  onIngestRetry?: () => void;
   onImport?: () => void;
 }) {
   const hasSource = Boolean(entry.url);
+  const isLoading = ingestState === "loading";
+  const isError = ingestState === "error";
   return (
     <div
       style={{
@@ -556,7 +565,13 @@ function StubReader({
               marginBottom: 6,
             }}
           >
-            {hasSource ? "Added — open the source to read" : "Not imported yet"}
+            {isLoading
+              ? "Generating reader…"
+              : isError
+                ? "Couldn’t generate the reader"
+                : hasSource
+                  ? "Added — open the source to read"
+                  : "Not imported yet"}
           </div>
           <div
             style={{
@@ -566,29 +581,71 @@ function StubReader({
               marginBottom: 20,
             }}
           >
-            {hasSource
-              ? "Reader-side parsing for explanations, terms, and diagrams isn’t built yet. For now, open the source on its host."
-              : "Drop the PDF or paste the arXiv link to parse this paper. Explanations, term definitions, and diagrams will be generated automatically."}
+            {isLoading
+              ? "Synthesizing sections, explanations, and per-level rephrasings from the abstract. This usually takes 5–15 seconds."
+              : isError
+                ? "The AI provider didn’t return a usable reader. Check your API key in Settings, then try again."
+                : hasSource
+                  ? "Reader-side parsing isn’t available yet for this paper. Open the source on its host, or retry generation."
+                  : "Drop the PDF or paste the arXiv link to parse this paper. Explanations, term definitions, and diagrams will be generated automatically."}
           </div>
-          {hasSource ? (
-            <a
-              href={entry.url}
-              target="_blank"
-              rel="noopener noreferrer"
+          {isLoading ? null : isError ? (
+            <button
+              onClick={onIngestRetry}
               style={{
                 fontFamily: READER_TOKENS.sans,
                 fontSize: 12.5,
                 fontWeight: 500,
                 padding: "7px 14px",
                 borderRadius: 6,
+                cursor: "pointer",
                 background: READER_TOKENS.accent,
                 color: "#fffdf7",
-                textDecoration: "none",
-                display: "inline-block",
+                border: "none",
               }}
             >
-              Open source ↗
-            </a>
+              Retry generation
+            </button>
+          ) : hasSource ? (
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              {onIngestRetry && (
+                <button
+                  onClick={onIngestRetry}
+                  style={{
+                    fontFamily: READER_TOKENS.sans,
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    padding: "7px 14px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    background: READER_TOKENS.accent,
+                    color: "#fffdf7",
+                    border: "none",
+                  }}
+                >
+                  Generate reader
+                </button>
+              )}
+              <a
+                href={entry.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontFamily: READER_TOKENS.sans,
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  padding: "7px 14px",
+                  borderRadius: 6,
+                  background: "transparent",
+                  color: READER_TOKENS.accent,
+                  border: `1px solid ${READER_TOKENS.accent}`,
+                  textDecoration: "none",
+                  display: "inline-block",
+                }}
+              >
+                Open source ↗
+              </a>
+            </div>
           ) : (
             <button
               onClick={onImport}
@@ -617,12 +674,18 @@ export function PaperReader({
   level,
   paperId = "attention",
   library,
+  paper: paperProp,
+  ingestState,
+  onIngestRetry,
   onImport,
   onSaveNote,
 }: {
   level: Level;
   paperId?: string;
   library?: LibraryPaper[];
+  paper?: Paper | null;
+  ingestState?: "idle" | "loading" | "error";
+  onIngestRetry?: () => void;
   onImport?: () => void;
   onSaveNote?: (note: UserNote) => void;
 }) {
@@ -664,12 +727,20 @@ export function PaperReader({
     return () => document.removeEventListener("selectionchange", handler);
   }, []);
 
-  const isFull = paperId === PAPER.id;
   const lookup = library ?? LIBRARY;
   const entry = lookup.find((p) => p.id === paperId) ?? lookup[0] ?? LIBRARY[0];
+  const activePaper: Paper | null =
+    paperProp ?? (paperId === PAPER.id ? PAPER : null);
 
-  if (!isFull) {
-    return <StubReader entry={entry} onImport={onImport} />;
+  if (!activePaper) {
+    return (
+      <StubReader
+        entry={entry}
+        ingestState={ingestState ?? "idle"}
+        onIngestRetry={onIngestRetry}
+        onImport={onImport}
+      />
+    );
   }
 
   const onSectionEnter = (sec: Section, el: HTMLElement) => {
@@ -752,7 +823,7 @@ export function PaperReader({
             marginBottom: 10,
           }}
         >
-          {PAPER.venue} · {PAPER.folder}
+          {activePaper.venue} · {activePaper.folder}
         </div>
         <h1
           style={{
@@ -763,7 +834,7 @@ export function PaperReader({
             lineHeight: 1.15,
           }}
         >
-          {PAPER.title}
+          {activePaper.title}
         </h1>
         <div
           style={{
@@ -773,7 +844,7 @@ export function PaperReader({
             fontStyle: "italic",
           }}
         >
-          {PAPER.authors}
+          {activePaper.authors}
         </div>
       </div>
 
@@ -785,7 +856,7 @@ export function PaperReader({
           position: "relative",
         }}
       >
-        {PAPER.sections.map((sec) => (
+        {activePaper.sections.map((sec) => (
           <section
             key={sec.id}
             data-section={sec.id}
@@ -870,6 +941,7 @@ export function PaperReader({
 
       {hover && (
         <ExplainPopover
+          paper={activePaper}
           hover={hover}
           level={level}
           pinned={pinned}

@@ -11,6 +11,7 @@ type PreviewData = {
   authors: string;
   venue: string | null;
   year: string | null;
+  abstract: string | null;
 };
 
 type PreviewState =
@@ -79,6 +80,7 @@ export function AddPaperModal({
     authors: string;
     venue: string | null;
     year: string | null;
+    abstract: string | null;
   }) => void;
 }) {
   const [tab, setTab] = useState<TabId>("upload");
@@ -551,6 +553,7 @@ export function AddPaperModal({
                   authors: preview.data.authors,
                   venue: preview.data.venue,
                   year: preview.data.year,
+                  abstract: preview.data.abstract,
                 });
               }
               setUrl("");

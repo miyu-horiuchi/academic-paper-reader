@@ -6,8 +6,22 @@ import {
   LIBRARY,
   type FolderKey,
   type LibraryPaper,
+  type Paper,
 } from "@/lib/paper-data";
 import type { AiFolder } from "@/lib/ai-folders";
+import type { AiSettings } from "@/lib/ai-settings";
+
+type IngestStatus = "loading" | "error";
+
+type IngestPayload = {
+  title: string;
+  authors: string;
+  year: string | null;
+  venue: string | null;
+  abstract: string | null;
+  url: string;
+  source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
+};
 
 export function useLibrary(
   initialPaperId = "attention",
@@ -20,6 +34,13 @@ export function useLibrary(
   const [flashFolder, setFlashFolder] = useState<FolderKey | null>(null);
   const [aiFolders, setAiFolders] = useState<AiFolder[]>([]);
   const [aiHydrated, setAiHydrated] = useState(false);
+  const [paperContent, setPaperContent] = useState<Record<string, Paper>>({});
+  const [ingestStatus, setIngestStatus] = useState<Record<string, IngestStatus>>(
+    {},
+  );
+  const [pendingIngest, setPendingIngest] = useState<
+    Record<string, IngestPayload>
+  >({});
 
   useEffect(() => {
     let cancelled = false;
@@ -73,14 +94,9 @@ export function useLibrary(
   }, []);
 
   const addPaper = useCallback(
-    (payload: {
-      title: string;
-      authors: string;
-      year: string | null;
-      url: string;
-      venue: string | null;
-      source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
-    }): string => {
+    (
+      payload: IngestPayload,
+    ): { id: string; payload: IngestPayload } => {
       const id = `imp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const yearNum = Number.parseInt(payload.year ?? "", 10);
       const tagBySource: Record<typeof payload.source, string> = {
@@ -106,7 +122,61 @@ export function useLibrary(
       setLibrary((lib) => [entry, ...lib]);
       setPaperId(id);
       setFolderId("recent");
-      return id;
+      setPendingIngest((prev) => ({ ...prev, [id]: payload }));
+      return { id, payload };
+    },
+    [],
+  );
+
+  const ingestPaper = useCallback(
+    async (
+      id: string,
+      payload: IngestPayload,
+      settings: AiSettings | null,
+    ) => {
+      if (!settings) {
+        setIngestStatus((prev) => ({ ...prev, [id]: "error" }));
+        return;
+      }
+      setIngestStatus((prev) => ({ ...prev, [id]: "loading" }));
+      try {
+        const res = await fetch("/api/ingest-paper", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            paperId: id,
+            title: payload.title,
+            authors: payload.authors,
+            venue: payload.venue,
+            year: payload.year,
+            abstract: payload.abstract,
+            url: payload.url,
+            source: payload.source,
+            folder: "ML Foundations",
+            provider: settings.provider,
+            apiKey: settings.apiKey,
+            authMethod: settings.authMethod ?? "key",
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = (await res.json()) as { paper?: Paper };
+        if (!data.paper) throw new Error("no_paper");
+        setPaperContent((prev) => ({ ...prev, [id]: data.paper as Paper }));
+        setIngestStatus((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        setPendingIngest((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      } catch {
+        setIngestStatus((prev) => ({ ...prev, [id]: "error" }));
+      }
     },
     [],
   );
@@ -127,5 +197,9 @@ export function useLibrary(
     acceptAiFolder,
     removeAiFolder,
     addPaper,
+    paperContent,
+    ingestStatus,
+    pendingIngest,
+    ingestPaper,
   };
 }

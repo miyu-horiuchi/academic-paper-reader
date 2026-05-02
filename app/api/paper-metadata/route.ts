@@ -6,6 +6,7 @@ type Metadata = {
   authors: string;
   venue: string | null;
   year: string | null;
+  abstract: string | null;
 };
 
 const UA = "PaperReader/0.1 (mailto:miyuhpenn@gmail.com)";
@@ -78,12 +79,14 @@ async function fetchArxiv(id: string): Promise<Metadata> {
   ).map((m) => decodeEntities(m[1]));
   const publishedMatch = entry.match(/<published>([^<]+)<\/published>/);
   const year = publishedMatch ? publishedMatch[1].slice(0, 4) : null;
+  const summaryMatch = entry.match(/<summary>([\s\S]*?)<\/summary>/);
   return {
     source: "arxiv",
     title: titleMatch ? decodeEntities(titleMatch[1]) : "",
     authors: joinAuthors(authors),
     venue: `arXiv:${id}`,
     year,
+    abstract: summaryMatch ? decodeEntities(summaryMatch[1]) : null,
   };
 }
 
@@ -102,6 +105,7 @@ async function fetchBiorxiv(
       authors?: string;
       date?: string;
       published?: string;
+      abstract?: string;
     }>;
   };
   const latest = data.collection?.[data.collection.length - 1];
@@ -116,6 +120,7 @@ async function fetchBiorxiv(
     authors: joinAuthors(authorList),
     venue: server === "biorxiv" ? "bioRxiv" : "medRxiv",
     year: (latest.date ?? "").slice(0, 4) || null,
+    abstract: latest.abstract ? decodeEntities(latest.abstract) : null,
   };
 }
 
@@ -132,6 +137,7 @@ async function fetchCrossref(doi: string): Promise<Metadata> {
       "container-title"?: string[];
       issued?: { "date-parts"?: number[][] };
       published?: { "date-parts"?: number[][] };
+      abstract?: string;
     };
   };
   const m = data.message;
@@ -142,12 +148,16 @@ async function fetchCrossref(doi: string): Promise<Metadata> {
   const year =
     m.issued?.["date-parts"]?.[0]?.[0] ??
     m.published?.["date-parts"]?.[0]?.[0];
+  const rawAbstract = m.abstract
+    ? m.abstract.replace(/<[^>]+>/g, "").trim()
+    : null;
   return {
     source: "doi",
     title: decodeEntities(m.title?.[0] ?? ""),
     authors: joinAuthors(authors),
     venue: m["container-title"]?.[0] ?? null,
     year: year ? String(year) : null,
+    abstract: rawAbstract ? decodeEntities(rawAbstract) : null,
   };
 }
 
@@ -199,12 +209,15 @@ async function fetchGenericUrl(url: string): Promise<Metadata> {
       : pick("author") ?? pick("article:author") ?? "";
 
   if (!title) throw new Error("no title");
+  const abstract =
+    pick("citation_abstract") ?? pick("DC.description") ?? description ?? null;
   return {
     source: "url",
     title: decodeEntities(title),
     authors: authors ? decodeEntities(authors) : "",
-    venue: venue ? decodeEntities(venue) : description ? null : null,
+    venue: venue ? decodeEntities(venue) : null,
     year,
+    abstract: abstract ? decodeEntities(abstract) : null,
   };
 }
 

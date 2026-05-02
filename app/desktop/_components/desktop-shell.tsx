@@ -15,6 +15,7 @@ import {
 import { PapersIcon } from "@/components/papers-icon";
 import { AddPaperModal } from "@/app/reader/_components/add-paper-modal";
 import { useLibrary } from "@/app/reader/_components/use-library";
+import { useAiSettings } from "@/lib/use-ai-settings";
 import type { UserNote } from "@/app/reader/_components/tab-views";
 
 function folderName(id: FolderKey | string): string {
@@ -195,6 +196,7 @@ export function DesktopShell({
   signOutAction?: () => Promise<void>;
 }) {
   const lib = useLibrary();
+  const aiSettings = useAiSettings();
   const level: Level = "beginner";
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
@@ -500,6 +502,14 @@ export function DesktopShell({
                 level={level}
                 paperId={lib.paperId}
                 library={lib.library}
+                paper={lib.paperContent[lib.paperId] ?? null}
+                ingestState={lib.ingestStatus[lib.paperId] ?? "idle"}
+                onIngestRetry={() => {
+                  const payload = lib.pendingIngest[lib.paperId];
+                  if (payload) {
+                    void lib.ingestPaper(lib.paperId, payload, aiSettings);
+                  }
+                }}
                 onImport={() => setAddOpen(true)}
                 onSaveNote={(note) =>
                   setUserNotes((prev) => [...prev, note])
@@ -508,7 +518,10 @@ export function DesktopShell({
               <AddPaperModal
                 open={addOpen}
                 onClose={() => setAddOpen(false)}
-                onAdd={(payload) => lib.addPaper(payload)}
+                onAdd={(payload) => {
+                  const { id, payload: ingestPayload } = lib.addPaper(payload);
+                  void lib.ingestPaper(id, ingestPayload, aiSettings);
+                }}
               />
             </div>
           </div>

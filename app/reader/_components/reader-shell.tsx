@@ -14,6 +14,7 @@ import { PaperReader } from "./paper-reader";
 import { Sidebar, LibraryList } from "./library-panes";
 import { AddPaperModal } from "./add-paper-modal";
 import { useLibrary } from "./use-library";
+import { useAiSettings } from "@/lib/use-ai-settings";
 import {
   DeadlinesView,
   GraphView,
@@ -319,6 +320,7 @@ export function ReaderShell({
   signOutAction?: () => Promise<void>;
 }) {
   const lib = useLibrary();
+  const aiSettings = useAiSettings();
   const level: Level = "beginner";
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [listOpen, setListOpen] = useState(true);
@@ -523,13 +525,24 @@ export function ReaderShell({
               level={level}
               paperId={lib.paperId}
               library={lib.library}
+              paper={lib.paperContent[lib.paperId] ?? null}
+              ingestState={lib.ingestStatus[lib.paperId] ?? "idle"}
+              onIngestRetry={() => {
+                const payload = lib.pendingIngest[lib.paperId];
+                if (payload) {
+                  void lib.ingestPaper(lib.paperId, payload, aiSettings);
+                }
+              }}
               onImport={() => setAddOpen(true)}
               onSaveNote={(note) => setUserNotes((prev) => [...prev, note])}
             />
             <AddPaperModal
               open={addOpen}
               onClose={() => setAddOpen(false)}
-              onAdd={(payload) => lib.addPaper(payload)}
+              onAdd={(payload) => {
+                const { id, payload: ingestPayload } = lib.addPaper(payload);
+                void lib.ingestPaper(id, ingestPayload, aiSettings);
+              }}
             />
           </div>
         </div>

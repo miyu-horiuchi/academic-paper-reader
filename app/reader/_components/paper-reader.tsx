@@ -14,6 +14,7 @@ import {
   type Section,
 } from "@/lib/paper-data";
 import type { UserNote } from "./tab-views";
+import { AIVisual } from "./ai-visual";
 import { AskAI } from "./ask-ai";
 import { SelectionPopover, type SelectionState } from "./selection-popover";
 
@@ -694,6 +695,7 @@ export function PaperReader({
   const [noteDraft, setNoteDraft] = useState<NoteDraft | null>(null);
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handler = () => {
@@ -781,6 +783,15 @@ export function PaperReader({
     setNoteDraft(null);
   };
 
+  const jumpToSection = (sectionId: string) => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const target = body.querySelector(`[data-section="${sectionId}"]`);
+    if (!(target instanceof HTMLElement)) return;
+    const top = target.offsetTop - 12;
+    body.scrollTo({ top, behavior: "smooth" });
+  };
+
   const saveNote = (draft: NoteDraft) => {
     const note: UserNote = {
       id: `u${Date.now()}`,
@@ -849,6 +860,7 @@ export function PaperReader({
       </div>
 
       <div
+        ref={bodyRef}
         style={{
           flex: 1,
           overflow: "auto",
@@ -856,6 +868,11 @@ export function PaperReader({
           position: "relative",
         }}
       >
+        <AIVisual
+          paperId={activePaper.id}
+          paperTitle={activePaper.title}
+          onJump={jumpToSection}
+        />
         {activePaper.sections.map((sec) => (
           <section
             key={sec.id}

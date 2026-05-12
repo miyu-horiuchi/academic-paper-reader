@@ -1020,20 +1020,27 @@ export function AIVisual({
                   ))}
               </div>
 
-              <div style={{ position: "relative", minHeight: 380 }}>
+              <div
+                style={{
+                  position: "relative",
+                  minHeight: 380,
+                  margin: "0 -24px",
+                }}
+              >
                 {state === "loading" && <GeneratingPlaceholder />}
                 {state === "ready" && imageUrl && (
                   <>
                     <div
                       style={{
                         width: "100%",
-                        aspectRatio: "16 / 10",
+                        aspectRatio: "16 / 9",
                         position: "relative",
                         backgroundImage: `linear-gradient(rgba(246,239,222,.05), rgba(246,239,222,.18)), url(${imageUrl})`,
                         backgroundSize: "cover",
                         backgroundPosition: "center",
-                        borderRadius: 4,
-                        border: `1px solid ${AIV.ruleSoft}`,
+                        border: "none",
+                        borderTop: `1px solid ${AIV.ruleSoft}`,
+                        borderBottom: `1px solid ${AIV.ruleSoft}`,
                       }}
                     >
                       {hotspots.map((h, i) => (

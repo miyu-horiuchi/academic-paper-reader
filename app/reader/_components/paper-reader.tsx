@@ -842,11 +842,20 @@ export function PaperReader({
       }}
     >
       <div
+        ref={bodyRef}
         style={{
-          padding: "40px 64px 8px",
-          borderBottom: `1px solid ${READER_TOKENS.rule}`,
+          flex: 1,
+          overflow: "auto",
+          position: "relative",
         }}
       >
+        <div
+          style={{
+            padding: "40px 64px 24px",
+            borderBottom: `1px solid ${READER_TOKENS.rule}`,
+            marginBottom: 28,
+          }}
+        >
         <div
           style={{
             fontFamily: READER_TOKENS.sans,
@@ -928,11 +937,8 @@ export function PaperReader({
       </div>
 
       <div
-        ref={bodyRef}
         style={{
-          flex: 1,
-          overflow: "auto",
-          padding: "28px 64px 80px",
+          padding: "0 64px 80px",
           position: "relative",
         }}
       >
@@ -1003,6 +1009,7 @@ export function PaperReader({
           </section>
         ))}
 
+      </div>
       </div>
 
       {hover && (

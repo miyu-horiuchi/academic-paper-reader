@@ -135,6 +135,25 @@ export function useLibrary(
     setAiFolders((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
+  const emptyTrash = useCallback(() => {
+    setLibrary((lib) => lib.filter((p) => !p.deletedAt));
+  }, []);
+
+  const removeMany = useCallback((ids: string[]) => {
+    const set = new Set(ids);
+    setLibrary((lib) => lib.filter((p) => !set.has(p.id)));
+    setPaperContent((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const id of ids)
+        if (id in next) {
+          delete next[id];
+          changed = true;
+        }
+      return changed ? next : prev;
+    });
+  }, []);
+
   const removePaper = useCallback((id: string) => {
     setLibrary((lib) => {
       const target = lib.find((p) => p.id === id);
@@ -293,6 +312,8 @@ export function useLibrary(
     removeAiFolder,
     addPaper,
     removePaper,
+    removeMany,
+    emptyTrash,
     paperContent,
     ingestStatus,
     ingestError,

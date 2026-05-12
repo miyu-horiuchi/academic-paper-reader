@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FOLDERS,
   FOLDER_MATCH,
@@ -334,6 +334,8 @@ export function LibraryList({
   onSelect,
   onDragPaper,
   onRemovePaper,
+  onRemoveMany,
+  onEmptyTrash,
   compact = false,
   query = "",
   aiFolders = [],
@@ -344,12 +346,24 @@ export function LibraryList({
   onSelect?: (id: string) => void;
   onDragPaper?: (paperId: string | null, dragging: boolean) => void;
   onRemovePaper?: (paperId: string) => void;
+  onRemoveMany?: (ids: string[]) => void;
+  onEmptyTrash?: () => void;
   compact?: boolean;
   query?: string;
   aiFolders?: AiFolder[];
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [swipe, setSwipe] = useState<{ id: string; dx: number } | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isTrash = folderId === "deleted";
+
+  useEffect(() => {
+    if (!isTrash) {
+      setSelectMode(false);
+      setSelectedIds(new Set());
+    }
+  }, [isTrash]);
   const swipeRef = useRef<{
     id: string;
     startX: number;
@@ -373,6 +387,15 @@ export function LibraryList({
       );
     });
 
+  const trashCount = library.filter((p) => p.deletedAt).length;
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
     <div
       style={{
@@ -382,6 +405,113 @@ export function LibraryList({
         fontFamily: READER_TOKENS.sans,
       }}
     >
+      {isTrash && trashCount > 0 && (
+        <div
+          style={{
+            padding: compact ? "12px 18px 0" : "16px 24px 0",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            justifyContent: "flex-end",
+          }}
+        >
+          {selectMode ? (
+            <>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: READER_TOKENS.ink3,
+                  marginRight: "auto",
+                }}
+              >
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={() => {
+                  if (selectedIds.size === 0) return;
+                  onRemoveMany?.(Array.from(selectedIds));
+                  setSelectedIds(new Set());
+                  setSelectMode(false);
+                }}
+                disabled={selectedIds.size === 0}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "5px 10px",
+                  border: "none",
+                  borderRadius: 5,
+                  background: selectedIds.size === 0 ? "rgba(160,40,40,.3)" : "#a02828",
+                  color: "#fffdf7",
+                  cursor: selectedIds.size === 0 ? "not-allowed" : "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => {
+                  setSelectMode(false);
+                  setSelectedIds(new Set());
+                }}
+                style={{
+                  fontSize: 12,
+                  padding: "5px 10px",
+                  border: `1px solid ${READER_TOKENS.rule}`,
+                  borderRadius: 5,
+                  background: "transparent",
+                  color: READER_TOKENS.ink2,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setSelectMode(true)}
+                style={{
+                  fontSize: 12,
+                  padding: "5px 10px",
+                  border: `1px solid ${READER_TOKENS.rule}`,
+                  borderRadius: 5,
+                  background: "transparent",
+                  color: READER_TOKENS.ink2,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Select
+              </button>
+              <button
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Permanently delete all ${trashCount} paper${trashCount === 1 ? "" : "s"} in Trash?`,
+                    )
+                  ) {
+                    onEmptyTrash?.();
+                  }
+                }}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "5px 10px",
+                  border: "none",
+                  borderRadius: 5,
+                  background: "#a02828",
+                  color: "#fffdf7",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Empty trash
+              </button>
+            </>
+          )}
+        </div>
+      )}
       <div
         style={{
           padding: compact ? "16px 18px 8px" : "20px 24px 10px",
@@ -443,10 +573,15 @@ export function LibraryList({
         )}
         {items.map((p) => {
           const isSel = selected === p.id;
+          const isPicked = selectedIds.has(p.id);
           const isSwiping = swipe?.id === p.id;
           const dx = isSwiping ? swipe.dx : 0;
           const armed = dx < -SWIPE_REVEAL;
-          const cardBg = isSel ? "#fffcf4" : READER_TOKENS.paperDeep;
+          const cardBg = isPicked
+            ? READER_TOKENS.accentSoft
+            : isSel
+              ? "#fffcf4"
+              : READER_TOKENS.paperDeep;
           return (
             <div
               key={p.id}
@@ -538,6 +673,10 @@ export function LibraryList({
                 }}
                 onClick={() => {
                   if (swipe?.id === p.id) return;
+                  if (selectMode) {
+                    toggleSelect(p.id);
+                    return;
+                  }
                   onSelect?.(p.id);
                 }}
                 onMouseEnter={() => setHoveredId(p.id)}

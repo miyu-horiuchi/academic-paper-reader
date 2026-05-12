@@ -486,6 +486,8 @@ export function DesktopShell({
                     onSelect={(id) => lib.setPaperId(id)}
                     onDragPaper={(_id, d) => lib.setDragging(d)}
                     onRemovePaper={lib.removePaper}
+                    onRemoveMany={lib.removeMany}
+                    onEmptyTrash={lib.emptyTrash}
                     compact
                   />
                 </div>

@@ -485,6 +485,8 @@ export function ReaderShell({
                   onSelect={(id) => lib.setPaperId(id)}
                   onDragPaper={(_id, d) => lib.setDragging(d)}
                   onRemovePaper={lib.removePaper}
+                  onRemoveMany={lib.removeMany}
+                  onEmptyTrash={lib.emptyTrash}
                   query={query}
                   aiFolders={lib.aiFolders}
                 />

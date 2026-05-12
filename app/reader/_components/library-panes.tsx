@@ -449,7 +449,7 @@ export function LibraryList({
                 position: "relative",
               }}
             >
-              {onRemovePaper && hoveredId === p.id && (
+              {onRemovePaper && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -461,13 +461,13 @@ export function LibraryList({
                   aria-label={`Delete ${p.title}`}
                   style={{
                     position: "absolute",
-                    top: 6,
-                    right: 6,
-                    width: 20,
-                    height: 20,
+                    bottom: 8,
+                    right: 8,
+                    width: 22,
+                    height: 22,
                     borderRadius: 4,
-                    border: "none",
-                    background: "rgba(0,0,0,0.05)",
+                    border: `1px solid ${READER_TOKENS.rule}`,
+                    background: "rgba(255,255,255,.6)",
                     color: READER_TOKENS.ink3,
                     fontSize: 14,
                     lineHeight: 1,
@@ -475,15 +475,19 @@ export function LibraryList({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    transition: "background .12s, color .12s",
+                    opacity: hoveredId === p.id ? 1 : 0.55,
+                    transition: "background .12s, color .12s, opacity .12s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(160,40,40,.12)";
+                    e.currentTarget.style.background = "rgba(160,40,40,.14)";
                     e.currentTarget.style.color = "#a02828";
+                    e.currentTarget.style.opacity = "1";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(0,0,0,0.05)";
+                    e.currentTarget.style.background = "rgba(255,255,255,.6)";
                     e.currentTarget.style.color = READER_TOKENS.ink3;
+                    e.currentTarget.style.opacity =
+                      hoveredId === p.id ? "1" : "0.55";
                   }}
                 >
                   ×

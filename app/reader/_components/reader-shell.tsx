@@ -528,6 +528,7 @@ export function ReaderShell({
               library={lib.library}
               paper={lib.paperContent[lib.paperId] ?? null}
               ingestState={lib.ingestStatus[lib.paperId] ?? "idle"}
+              ingestError={lib.ingestError[lib.paperId]}
               onIngestRetry={() => {
                 const payload = lib.pendingIngest[lib.paperId];
                 if (payload) {

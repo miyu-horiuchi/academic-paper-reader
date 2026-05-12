@@ -460,11 +460,13 @@ function ExplainPopover({
 function StubReader({
   entry,
   ingestState = "idle",
+  ingestError,
   onIngestRetry,
   onImport,
 }: {
   entry: LibraryPaper;
   ingestState?: "idle" | "loading" | "error";
+  ingestError?: string;
   onIngestRetry?: () => void;
   onImport?: () => void;
 }) {
@@ -590,6 +592,24 @@ function StubReader({
                   ? "Reader-side parsing isn’t available yet for this paper. Open the source on its host, or retry generation."
                   : "Drop the PDF or paste the arXiv link to parse this paper. Explanations, term definitions, and diagrams will be generated automatically."}
           </div>
+          {isError && ingestError && (
+            <div
+              style={{
+                fontSize: 11.5,
+                color: "#a02828",
+                lineHeight: 1.5,
+                marginBottom: 16,
+                padding: "8px 10px",
+                background: "rgba(160,40,40,.08)",
+                border: "1px solid rgba(160,40,40,.2)",
+                borderRadius: 5,
+                fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                wordBreak: "break-word",
+              }}
+            >
+              {ingestError}
+            </div>
+          )}
           {isLoading ? null : isError ? (
             <button
               onClick={onIngestRetry}
@@ -677,6 +697,7 @@ export function PaperReader({
   library,
   paper: paperProp,
   ingestState,
+  ingestError,
   onIngestRetry,
   onImport,
   onSaveNote,
@@ -686,6 +707,7 @@ export function PaperReader({
   library?: LibraryPaper[];
   paper?: Paper | null;
   ingestState?: "idle" | "loading" | "error";
+  ingestError?: string;
   onIngestRetry?: () => void;
   onImport?: () => void;
   onSaveNote?: (note: UserNote) => void;
@@ -739,6 +761,7 @@ export function PaperReader({
       <StubReader
         entry={entry}
         ingestState={ingestState ?? "idle"}
+        ingestError={ingestError}
         onIngestRetry={onIngestRetry}
         onImport={onImport}
       />

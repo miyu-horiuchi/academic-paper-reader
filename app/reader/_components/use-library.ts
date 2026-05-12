@@ -28,6 +28,7 @@ export function useLibrary(
   initialFolderId: FolderKey = "pinned",
 ) {
   const [library, setLibrary] = useState<LibraryPaper[]>(LIBRARY);
+  const [libraryHydrated, setLibraryHydrated] = useState(false);
   const [paperId, setPaperId] = useState(initialPaperId);
   const [folderId, setFolderId] = useState<FolderKey | string>(initialFolderId);
   const [dragging, setDragging] = useState(false);
@@ -41,6 +42,7 @@ export function useLibrary(
   const [pendingIngest, setPendingIngest] = useState<
     Record<string, IngestPayload>
   >({});
+  const [ingestError, setIngestError] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -55,10 +57,50 @@ export function useLibrary(
       .finally(() => {
         if (!cancelled) setAiHydrated(true);
       });
+    fetch("/api/library")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data && Array.isArray(data.library)) {
+          setLibrary(data.library);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLibraryHydrated(true);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!libraryHydrated) return;
+    const t = setTimeout(() => {
+      fetch("/api/library", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ library }),
+      }).catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
+  }, [library, libraryHydrated]);
+
+  useEffect(() => {
+    if (!paperId) return;
+    if (paperContent[paperId]) return;
+    let cancelled = false;
+    fetch(`/api/ingest-paper?paperId=${encodeURIComponent(paperId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.paper) {
+          setPaperContent((prev) => ({ ...prev, [paperId]: data.paper }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [paperId, paperContent]);
 
   useEffect(() => {
     if (!aiHydrated) return;
@@ -177,6 +219,12 @@ export function useLibrary(
       settings: AiSettings | null,
     ) => {
       setIngestStatus((prev) => ({ ...prev, [id]: "loading" }));
+      setIngestError((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       try {
         const res = await fetch("/api/ingest-paper", {
           method: "POST",
@@ -196,11 +244,18 @@ export function useLibrary(
             authMethod: settings?.authMethod ?? "key",
           }),
         });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json().catch(() => null)) as
+          | { paper?: Paper; error?: string; detail?: string; message?: string }
+          | null;
+        if (!res.ok || !data) {
+          const reason =
+            data?.detail ||
+            data?.message ||
+            data?.error ||
+            `HTTP ${res.status}`;
+          throw new Error(reason);
         }
-        const data = (await res.json()) as { paper?: Paper };
-        if (!data.paper) throw new Error("no_paper");
+        if (!data.paper) throw new Error(data.error || "no_paper");
         setPaperContent((prev) => ({ ...prev, [id]: data.paper as Paper }));
         setIngestStatus((prev) => {
           const next = { ...prev };
@@ -212,8 +267,10 @@ export function useLibrary(
           delete next[id];
           return next;
         });
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         setIngestStatus((prev) => ({ ...prev, [id]: "error" }));
+        setIngestError((prev) => ({ ...prev, [id]: msg }));
       }
     },
     [],
@@ -238,6 +295,7 @@ export function useLibrary(
     removePaper,
     paperContent,
     ingestStatus,
+    ingestError,
     pendingIngest,
     ingestPaper,
   };

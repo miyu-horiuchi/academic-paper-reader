@@ -176,7 +176,7 @@ export async function POST(req: Request) {
       );
     }
     const [textResult, visualResult] = await Promise.all([
-      generateText({ model, prompt }),
+      generateText({ model, prompt, maxOutputTokens: 8000 }),
       generateIsometricVisual({ title, abstract }).catch(() => null),
     ]);
     text = textResult.text;
@@ -195,8 +195,12 @@ export async function POST(req: Request) {
     const match = text.match(/\{[\s\S]*\}/);
     parsed = JSON.parse(match ? match[0] : text) as RawPaper;
   } catch {
+    const snippet = text.slice(0, 200).replace(/\s+/g, " ").trim();
     return Response.json(
-      { error: "parse_error", detail: "Model returned non-JSON output." },
+      {
+        error: "parse_error",
+        detail: `Model returned non-JSON output. Got: "${snippet}…"`,
+      },
       { status: 502 },
     );
   }

@@ -290,7 +290,9 @@ const notDeleted = (p: LibraryPaper) => !p.deletedAt;
 
 export const FOLDER_MATCH: Record<FolderKey, (p: LibraryPaper) => boolean> = {
   all: (p) => notDeleted(p),
-  recent: (p) => notDeleted(p) && /day|week/.test(p.updated ?? ""),
+  recent: (p) =>
+    notDeleted(p) &&
+    /just now|now|sec|min|hour|day|week/i.test(p.updated ?? ""),
   pinned: (p) => notDeleted(p) && p.pinned,
   reading: (p) => notDeleted(p) && Boolean(p.reading),
   ml: (p) => notDeleted(p) && p.folder === "ML Foundations",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   FOLDERS,
   FOLDER_MATCH,
@@ -339,6 +339,15 @@ export function LibraryList({
   aiFolders?: AiFolder[];
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [swipe, setSwipe] = useState<{ id: string; dx: number } | null>(null);
+  const swipeRef = useRef<{
+    id: string;
+    startX: number;
+    startY: number;
+    claimed: boolean;
+  } | null>(null);
+  const SWIPE_REVEAL = 80;
+  const SWIPE_COMMIT = 110;
   const q = query.trim().toLowerCase();
   const activeAi = aiFolders.find((f) => f.id === folderId);
   const baseMatcher = activeAi
@@ -424,75 +433,119 @@ export function LibraryList({
         )}
         {items.map((p) => {
           const isSel = selected === p.id;
+          const isSwiping = swipe?.id === p.id;
+          const dx = isSwiping ? swipe.dx : 0;
+          const armed = dx < -SWIPE_REVEAL;
+          const cardBg = isSel ? "#fffcf4" : READER_TOKENS.paperDeep;
           return (
             <div
               key={p.id}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData("text/paper-id", p.id);
-                e.dataTransfer.effectAllowed = "move";
-                onDragPaper?.(p.id, true);
-              }}
-              onDragEnd={() => onDragPaper?.(null, false)}
-              onClick={() => onSelect?.(p.id)}
-              onMouseEnter={() => setHoveredId(p.id)}
-              onMouseLeave={() =>
-                setHoveredId((prev) => (prev === p.id ? null : prev))
-              }
               style={{
-                padding: compact ? "10px 12px" : "12px 14px",
-                borderRadius: 6,
-                cursor: "grab",
-                background: isSel ? "#fffcf4" : "transparent",
-                boxShadow: isSel ? "0 1px 2px rgba(60,40,20,.08)" : "none",
-                marginBottom: 2,
                 position: "relative",
+                overflow: "hidden",
+                borderRadius: 6,
+                marginBottom: 2,
               }}
             >
               {onRemovePaper && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (window.confirm(`Delete "${p.title}"?`)) {
-                      onRemovePaper(p.id);
-                    }
-                  }}
-                  title="Delete paper"
-                  aria-label={`Delete ${p.title}`}
+                <div
                   style={{
                     position: "absolute",
-                    bottom: 8,
-                    right: 8,
-                    width: 22,
-                    height: 22,
-                    borderRadius: 4,
-                    border: `1px solid ${READER_TOKENS.rule}`,
-                    background: "rgba(255,255,255,.6)",
-                    color: READER_TOKENS.ink3,
-                    fontSize: 14,
-                    lineHeight: 1,
-                    cursor: "pointer",
+                    inset: 0,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    opacity: hoveredId === p.id ? 1 : 0.55,
-                    transition: "background .12s, color .12s, opacity .12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(160,40,40,.14)";
-                    e.currentTarget.style.color = "#a02828";
-                    e.currentTarget.style.opacity = "1";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(255,255,255,.6)";
-                    e.currentTarget.style.color = READER_TOKENS.ink3;
-                    e.currentTarget.style.opacity =
-                      hoveredId === p.id ? "1" : "0.55";
+                    justifyContent: "flex-end",
+                    paddingRight: 16,
+                    background: armed ? "#a02828" : "rgba(160,40,40,.85)",
+                    color: "#fffdf7",
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    letterSpacing: 0.2,
+                    transition: "background .12s",
                   }}
                 >
-                  ×
-                </button>
+                  {armed ? "Release to delete" : "Delete"}
+                </div>
               )}
+              <div
+                draggable
+                onDragStart={(e) => {
+                  if (swipeRef.current?.claimed) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.dataTransfer.setData("text/paper-id", p.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  onDragPaper?.(p.id, true);
+                }}
+                onDragEnd={() => onDragPaper?.(null, false)}
+                onPointerDown={(e) => {
+                  if (!onRemovePaper) return;
+                  swipeRef.current = {
+                    id: p.id,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    claimed: false,
+                  };
+                }}
+                onPointerMove={(e) => {
+                  const s = swipeRef.current;
+                  if (!s || s.id !== p.id) return;
+                  const ddx = e.clientX - s.startX;
+                  const ddy = e.clientY - s.startY;
+                  if (!s.claimed) {
+                    if (
+                      Math.abs(ddx) > 8 &&
+                      Math.abs(ddx) > Math.abs(ddy) + 4
+                    ) {
+                      s.claimed = true;
+                      try {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      } catch {}
+                    } else if (Math.abs(ddy) > 10) {
+                      swipeRef.current = null;
+                      return;
+                    }
+                  }
+                  if (s.claimed) {
+                    setSwipe({ id: p.id, dx: Math.min(0, ddx) });
+                  }
+                }}
+                onPointerUp={(e) => {
+                  const s = swipeRef.current;
+                  if (s && s.id === p.id && s.claimed) {
+                    const ddx = e.clientX - s.startX;
+                    if (ddx < -SWIPE_COMMIT) {
+                      onRemovePaper?.(p.id);
+                    }
+                    setSwipe(null);
+                  }
+                  swipeRef.current = null;
+                }}
+                onPointerCancel={() => {
+                  swipeRef.current = null;
+                  setSwipe(null);
+                }}
+                onClick={() => {
+                  if (swipe?.id === p.id) return;
+                  onSelect?.(p.id);
+                }}
+                onMouseEnter={() => setHoveredId(p.id)}
+                onMouseLeave={() =>
+                  setHoveredId((prev) => (prev === p.id ? null : prev))
+                }
+                style={{
+                  padding: compact ? "10px 12px" : "12px 14px",
+                  cursor: "grab",
+                  background: cardBg,
+                  boxShadow: isSel ? "0 1px 2px rgba(60,40,20,.08)" : "none",
+                  position: "relative",
+                  transform: `translateX(${dx}px)`,
+                  transition: isSwiping ? "none" : "transform .2s ease",
+                  touchAction: "pan-y",
+                  userSelect: "none",
+                }}
+              >
               <div
                 style={{
                   display: "flex",
@@ -557,6 +610,7 @@ export function LibraryList({
                     {p.unread} new
                   </span>
                 )}
+              </div>
               </div>
             </div>
           );

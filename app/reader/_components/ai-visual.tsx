@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { AskAI } from "./ask-ai";
 
 const AIV = {
@@ -718,6 +718,11 @@ export function AIVisual({
   const [imageUrl, setImageUrl] = useState<string | null>(
     initialImageUrl ?? null,
   );
+
+  useEffect(() => {
+    setImageUrl(initialImageUrl ?? null);
+    setState(initialImageUrl ? "ready" : "idle");
+  }, [paperId, initialImageUrl]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [active, setActive] = useState<Hotspot | null>(null);
   const [error, setError] = useState("");
@@ -1006,16 +1011,21 @@ export function AIVisual({
                     <div
                       style={{
                         width: "100%",
-                        aspectRatio: "16 / 9",
                         position: "relative",
-                        backgroundImage: `linear-gradient(rgba(246,239,222,.05), rgba(246,239,222,.18)), url(${imageUrl})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                        border: "none",
                         borderTop: `1px solid ${AIV.ruleSoft}`,
                         borderBottom: `1px solid ${AIV.ruleSoft}`,
+                        background: AIV.paper,
                       }}
                     >
+                      <img
+                        src={imageUrl}
+                        alt=""
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          height: "auto",
+                        }}
+                      />
                       {hotspots.map((h, i) => (
                         <HotspotDot
                           key={h.id}

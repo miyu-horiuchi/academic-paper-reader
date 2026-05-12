@@ -958,26 +958,6 @@ export function PaperReader({
           </section>
         ))}
 
-        <section style={{ opacity: 0.4, marginTop: 32 }}>
-          <h2
-            style={{
-              fontSize: 18,
-              fontFamily: READER_TOKENS.sans,
-              fontWeight: 600,
-              letterSpacing: 0.3,
-              textTransform: "uppercase",
-              color: READER_TOKENS.ink2,
-              margin: "0 0 16px",
-            }}
-          >
-            3.3 · Position-wise Feed-Forward Networks
-          </h2>
-          <div style={{ fontSize: 16.5, lineHeight: 1.7 }}>
-            In addition to attention sub-layers, each of the layers in our encoder and
-            decoder contains a fully connected feed-forward network, which is applied to
-            each position separately and identically&hellip;
-          </div>
-        </section>
       </div>
 
       {hover && (

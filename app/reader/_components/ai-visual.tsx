@@ -751,7 +751,9 @@ export function AIVisual({
       setState("ready");
     } catch (e) {
       if ((e as Error).message !== "aborted") {
-        setError("Generation failed. Try again.");
+        setError(
+          (e as Error).message || "Generation failed. Try again.",
+        );
         setState("error");
       }
     }

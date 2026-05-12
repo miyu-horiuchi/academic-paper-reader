@@ -1,18 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { READER_TOKENS } from "@/lib/paper-data";
+import { extractPdf } from "@/lib/pdf-extract";
 
 type TabId = "upload" | "url" | "paste" | "blank";
 
 type PreviewData = {
-  source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
+  source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url" | "pdf";
   title: string;
   authors: string;
   venue: string | null;
   year: string | null;
   abstract: string | null;
 };
+
+type PdfState =
+  | { kind: "idle" }
+  | { kind: "extracting"; fileName: string }
+  | { kind: "ready"; data: PreviewData; fileName: string }
+  | { kind: "error"; message: string };
 
 type PreviewState =
   | { kind: "idle" }
@@ -88,6 +95,32 @@ export function AddPaperModal({
   const [url, setUrl] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({ kind: "idle" });
+  const [pdf, setPdf] = useState<PdfState>({ kind: "idle" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePdfFile = async (file: File) => {
+    setPdf({ kind: "extracting", fileName: file.name });
+    try {
+      const data = await extractPdf(file);
+      setPdf({
+        kind: "ready",
+        fileName: file.name,
+        data: {
+          source: "pdf",
+          title: data.title,
+          authors: data.authors,
+          venue: null,
+          year: data.year,
+          abstract: data.abstract,
+        },
+      });
+    } catch (e) {
+      setPdf({
+        kind: "error",
+        message: e instanceof Error ? e.message : "Could not read this PDF.",
+      });
+    }
+  };
 
   useEffect(() => {
     const trimmed = url.trim();
@@ -243,7 +276,14 @@ export function AddPaperModal({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file && file.type === "application/pdf") {
+                  void handlePdfFile(file);
+                } else if (file) {
+                  setPdf({ kind: "error", message: "Please drop a PDF file." });
+                }
               }}
+              onClick={() => fileInputRef.current?.click()}
               style={{
                 border: `1.5px dashed ${dragOver ? READER_TOKENS.accent : READER_TOKENS.ruleStrong}`,
                 borderRadius: 8,
@@ -251,8 +291,20 @@ export function AddPaperModal({
                 padding: "32px 20px",
                 textAlign: "center",
                 transition: "background .12s, border-color .12s",
+                cursor: "pointer",
               }}
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handlePdfFile(file);
+                  e.target.value = "";
+                }}
+              />
               <div
                 style={{
                   width: 44,
@@ -307,6 +359,42 @@ export function AddPaperModal({
               >
                 Title &amp; authors auto-extracted · annotations carry over
               </div>
+            </div>
+          )}
+
+          {tab === "upload" && pdf.kind !== "idle" && (
+            <div
+              style={{
+                marginTop: 14,
+                fontSize: 12.5,
+                color: READER_TOKENS.ink2,
+                lineHeight: 1.5,
+              }}
+            >
+              {pdf.kind === "extracting" && (
+                <span>Reading {pdf.fileName}…</span>
+              )}
+              {pdf.kind === "ready" && (
+                <div
+                  style={{
+                    padding: "10px 12px",
+                    background: READER_TOKENS.accentSoft,
+                    borderRadius: 6,
+                    border: `1px solid ${READER_TOKENS.rule}`,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, color: READER_TOKENS.ink, marginBottom: 4 }}>
+                    {pdf.data.title}
+                  </div>
+                  <div style={{ color: READER_TOKENS.ink3, fontSize: 12 }}>
+                    {pdf.data.authors}
+                    {pdf.data.year ? ` · ${pdf.data.year}` : ""}
+                  </div>
+                </div>
+              )}
+              {pdf.kind === "error" && (
+                <span style={{ color: "#a02828" }}>{pdf.message}</span>
+              )}
             </div>
           )}
 
@@ -542,43 +630,58 @@ export function AddPaperModal({
           >
             Cancel
           </button>
-          <button
-            disabled={tab === "url" && preview.kind !== "ok"}
-            onClick={() => {
-              if (tab === "url" && preview.kind === "ok") {
-                onAdd?.({
-                  url: url.trim(),
-                  source: preview.data.source,
-                  title: preview.data.title,
-                  authors: preview.data.authors,
-                  venue: preview.data.venue,
-                  year: preview.data.year,
-                  abstract: preview.data.abstract,
-                });
-              }
-              setUrl("");
-              setTitle("");
-              setPreview({ kind: "idle" });
-              onClose();
-            }}
-            style={{
-              background: READER_TOKENS.accent,
-              border: "none",
-              padding: "6px 14px",
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#fffdf7",
-              cursor:
-                tab === "url" && preview.kind !== "ok"
-                  ? "not-allowed"
-                  : "pointer",
-              opacity: tab === "url" && preview.kind !== "ok" ? 0.5 : 1,
-              fontFamily: "inherit",
-            }}
-          >
-            Add paper
-          </button>
+          {(() => {
+            const urlReady = tab === "url" && preview.kind === "ok";
+            const pdfReady = tab === "upload" && pdf.kind === "ready";
+            const disabled = !urlReady && !pdfReady;
+            return (
+              <button
+                disabled={disabled}
+                onClick={() => {
+                  if (urlReady && preview.kind === "ok") {
+                    onAdd?.({
+                      url: url.trim(),
+                      source: preview.data.source,
+                      title: preview.data.title,
+                      authors: preview.data.authors,
+                      venue: preview.data.venue,
+                      year: preview.data.year,
+                      abstract: preview.data.abstract,
+                    });
+                  } else if (pdfReady && pdf.kind === "ready") {
+                    onAdd?.({
+                      url: `pdf:${pdf.fileName}`,
+                      source: pdf.data.source,
+                      title: pdf.data.title,
+                      authors: pdf.data.authors,
+                      venue: pdf.data.venue,
+                      year: pdf.data.year,
+                      abstract: pdf.data.abstract,
+                    });
+                  }
+                  setUrl("");
+                  setTitle("");
+                  setPreview({ kind: "idle" });
+                  setPdf({ kind: "idle" });
+                  onClose();
+                }}
+                style={{
+                  background: READER_TOKENS.accent,
+                  border: "none",
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#fffdf7",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  opacity: disabled ? 0.5 : 1,
+                  fontFamily: "inherit",
+                }}
+              >
+                Add paper
+              </button>
+            );
+          })()}
         </div>
       </div>
     </div>

@@ -268,7 +268,7 @@ export type LibraryPaper = {
   tags: string[];
   unread?: number;
   url?: string;
-  source?: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
+  source?: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url" | "pdf";
   venue?: string;
   deletedAt?: number;
 };

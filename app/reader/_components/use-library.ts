@@ -20,7 +20,7 @@ type IngestPayload = {
   venue: string | null;
   abstract: string | null;
   url: string;
-  source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
+  source: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url" | "pdf";
 };
 
 export function useLibrary(
@@ -146,6 +146,7 @@ export function useLibrary(
         medrxiv: "preprint",
         doi: "journal",
         url: "web",
+        pdf: "pdf",
       };
       const entry: LibraryPaper = {
         id,

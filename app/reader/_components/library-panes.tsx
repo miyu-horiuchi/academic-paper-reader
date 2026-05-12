@@ -323,6 +323,7 @@ export function LibraryList({
   selected,
   onSelect,
   onDragPaper,
+  onRemovePaper,
   compact = false,
   query = "",
   aiFolders = [],
@@ -332,10 +333,12 @@ export function LibraryList({
   selected?: string;
   onSelect?: (id: string) => void;
   onDragPaper?: (paperId: string | null, dragging: boolean) => void;
+  onRemovePaper?: (paperId: string) => void;
   compact?: boolean;
   query?: string;
   aiFolders?: AiFolder[];
 }) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const q = query.trim().toLowerCase();
   const activeAi = aiFolders.find((f) => f.id === folderId);
   const baseMatcher = activeAi
@@ -432,6 +435,10 @@ export function LibraryList({
               }}
               onDragEnd={() => onDragPaper?.(null, false)}
               onClick={() => onSelect?.(p.id)}
+              onMouseEnter={() => setHoveredId(p.id)}
+              onMouseLeave={() =>
+                setHoveredId((prev) => (prev === p.id ? null : prev))
+              }
               style={{
                 padding: compact ? "10px 12px" : "12px 14px",
                 borderRadius: 6,
@@ -442,6 +449,46 @@ export function LibraryList({
                 position: "relative",
               }}
             >
+              {onRemovePaper && hoveredId === p.id && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Delete "${p.title}"?`)) {
+                      onRemovePaper(p.id);
+                    }
+                  }}
+                  title="Delete paper"
+                  aria-label={`Delete ${p.title}`}
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    right: 6,
+                    width: 20,
+                    height: 20,
+                    borderRadius: 4,
+                    border: "none",
+                    background: "rgba(0,0,0,0.05)",
+                    color: READER_TOKENS.ink3,
+                    fontSize: 14,
+                    lineHeight: 1,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "background .12s, color .12s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(160,40,40,.12)";
+                    e.currentTarget.style.color = "#a02828";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(0,0,0,0.05)";
+                    e.currentTarget.style.color = READER_TOKENS.ink3;
+                  }}
+                >
+                  ×
+                </button>
+              )}
               <div
                 style={{
                   display: "flex",

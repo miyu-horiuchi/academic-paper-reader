@@ -93,6 +93,35 @@ export function useLibrary(
     setAiFolders((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
+  const removePaper = useCallback((id: string) => {
+    setLibrary((lib) => {
+      const next = lib.filter((p) => p.id !== id);
+      setPaperId((current) => {
+        if (current !== id) return current;
+        return next[0]?.id ?? "";
+      });
+      return next;
+    });
+    setPaperContent((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setIngestStatus((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setPendingIngest((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
   const addPaper = useCallback(
     (
       payload: IngestPayload,
@@ -197,6 +226,7 @@ export function useLibrary(
     acceptAiFolder,
     removeAiFolder,
     addPaper,
+    removePaper,
     paperContent,
     ingestStatus,
     pendingIngest,

@@ -14,29 +14,27 @@ export type GeneratedVisual = {
   prompt: string;
 };
 
+const STYLE_GUIDE =
+  "Render as an isometric 3D educational diagram. Axonometric projection, soft pastel palette on a cream background, clean geometric blocks with subtle drop shadows, labelled arrows showing data flow, vector illustration style, no readable text, no people, no logos.";
+
 export function buildIsometricPrompt(opts: {
   title: string;
+  summary?: string | null;
   abstract?: string | null;
 }): string {
-  const seed = [opts.title, opts.abstract ?? ""].join(". ").slice(0, 600);
-  return [
-    "Isometric 3D technical illustration of:",
-    seed,
-    "Axonometric projection, soft pastel colors on cream background, clean geometric shapes, labelled blocks and arrows showing data flow, educational diagram style, no text labels, no people.",
-  ].join(" ");
+  const seed = (opts.summary ?? opts.abstract ?? opts.title).trim();
+  const subject = seed.length > 0 ? seed : opts.title;
+  return `Educational diagram illustrating: ${subject.slice(0, 700)}. ${STYLE_GUIDE}`;
 }
 
 export async function generateIsometricVisual(opts: {
   title: string;
+  summary?: string | null;
   abstract?: string | null;
-  customPrompt?: string | null;
 }): Promise<GeneratedVisual | null> {
   const key = process.env.FAL_KEY;
   if (!key) return null;
-  const prompt =
-    opts.customPrompt && opts.customPrompt.trim().length > 40
-      ? opts.customPrompt.trim()
-      : buildIsometricPrompt(opts);
+  const prompt = buildIsometricPrompt(opts);
   const res = await fetch(FAL_ENDPOINT, {
     method: "POST",
     headers: {

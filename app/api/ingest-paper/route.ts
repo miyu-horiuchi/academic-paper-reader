@@ -25,7 +25,7 @@ type RawSection = {
   explain?: { beginner?: unknown; intermediate?: unknown; expert?: unknown };
   body?: unknown;
 };
-type RawPaper = { sections?: unknown; visualPrompt?: unknown };
+type RawPaper = { sections?: unknown; summary?: unknown };
 
 function s(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim().length > 0
@@ -147,7 +147,7 @@ export async function POST(req: Request) {
     "      ]",
     "    }",
     "  ],",
-    '  "visualPrompt": "A single paragraph describing what an isometric 3D educational diagram of THIS specific paper should depict, written as an image-generation prompt."',
+    '  "summary": "A concise 40-70 word paragraph describing THIS paper\'s core idea / architecture / finding in concrete, visualizable terms (name the components, flows, or objects)."',
     "}",
     "",
     "Constraints:",
@@ -157,11 +157,10 @@ export async function POST(req: Request) {
     "- For beginner: avoid jargon, use everyday analogies. For expert: be precise and dense.",
     "- Be faithful to the abstract; do not invent specific numbers, datasets, or claims that aren't grounded in it. If something would be speculation, keep it general.",
     "",
-    "For `visualPrompt` (this drives image generation):",
-    "- Describe a single, paper-specific scene that *teaches* the paper's core idea at a glance.",
-    "- Concretely name the objects/blocks/flows the diagram should show (e.g. 'two encoder columns of stacked blue blocks feeding into a decoder column with curved attention arrows', 'a strand of DNA above three petri dishes of varying colour to denote culturability scores').",
-    "- Always end with this stylistic spine verbatim: 'Isometric 3D educational diagram, axonometric projection, soft pastel palette on cream background, clean geometric blocks with subtle drop shadows, labelled arrows showing data flow, vector illustration style, no readable text, no people, no logos.'",
-    "- One paragraph, 60–120 words, no line breaks.",
+    "For `summary` (used to generate an isometric diagram of the paper):",
+    "- 40-70 words, one paragraph, no line breaks.",
+    "- Concrete and visualizable — name the parts, the flow, or the metaphor (e.g. 'two encoder columns feeding into a decoder via curved attention arrows', 'a strand of DNA above three petri dishes coloured by culturability score').",
+    "- Skip framing words like 'this paper' — describe the THING.",
     "",
     "Respond with ONLY the JSON object.",
   ]
@@ -221,12 +220,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const customVisualPrompt =
-    typeof parsed.visualPrompt === "string" ? parsed.visualPrompt : null;
+  const summary =
+    typeof parsed.summary === "string" ? parsed.summary : null;
   const visual = await generateIsometricVisual({
     title,
+    summary,
     abstract,
-    customPrompt: customVisualPrompt,
   }).catch(() => null);
   const visualUrl = visual?.url;
 

@@ -2,6 +2,8 @@
 
 A web app for reading and annotating academic papers. Sign in with Google.
 
+Live: [https://academic-paper-reader-chi.vercel.app](https://academic-paper-reader-chi.vercel.app)
+
 ## Stack
 
 - Next.js 15 (App Router, TypeScript, Turbopack)
@@ -52,6 +54,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Deploy
 
-Deploy to Vercel. Add the three env vars in the project settings, then add
-`https://<your-domain>/api/auth/callback/google` as an authorized redirect URI
-in the Google OAuth client.
+Deployed to Vercel at [https://academic-paper-reader-chi.vercel.app](https://academic-paper-reader-chi.vercel.app).
+Add the three env vars in the project settings, then add
+`https://academic-paper-reader-chi.vercel.app/api/auth/callback/google` as an
+authorized redirect URI in the Google OAuth client.

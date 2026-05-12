@@ -175,10 +175,6 @@ export function useLibrary(
       payload: IngestPayload,
       settings: AiSettings | null,
     ) => {
-      if (!settings) {
-        setIngestStatus((prev) => ({ ...prev, [id]: "error" }));
-        return;
-      }
       setIngestStatus((prev) => ({ ...prev, [id]: "loading" }));
       try {
         const res = await fetch("/api/ingest-paper", {
@@ -194,9 +190,9 @@ export function useLibrary(
             url: payload.url,
             source: payload.source,
             folder: "ML Foundations",
-            provider: settings.provider,
-            apiKey: settings.apiKey,
-            authMethod: settings.authMethod ?? "key",
+            provider: settings?.provider,
+            apiKey: settings?.apiKey,
+            authMethod: settings?.authMethod ?? "key",
           }),
         });
         if (!res.ok) {

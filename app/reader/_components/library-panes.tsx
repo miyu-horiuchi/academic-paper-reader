@@ -13,7 +13,11 @@ import {
 import { suggestionMatches, type AiFolder } from "@/lib/ai-folders";
 import { SuggestFolders } from "./suggest-folders";
 
-function FolderIcon({ kind }: { kind: "library" | "clock" | "pin" | "bookmark" | "folder" }) {
+function FolderIcon({
+  kind,
+}: {
+  kind: "library" | "clock" | "pin" | "bookmark" | "folder" | "trash";
+}) {
   const s = {
     width: 13,
     height: 13,
@@ -54,6 +58,12 @@ function FolderIcon({ kind }: { kind: "library" | "clock" | "pin" | "bookmark" |
       return (
         <svg {...s}>
           <path d="M2 4v7h9V5H6.5L5.5 4z" />
+        </svg>
+      );
+    case "trash":
+      return (
+        <svg {...s}>
+          <path d="M2.5 3.5h8M4.5 3.5V2.5h4V3.5M3.5 3.5l.5 7h5l.5-7" />
         </svg>
       );
   }

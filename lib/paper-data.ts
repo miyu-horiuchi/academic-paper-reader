@@ -270,6 +270,7 @@ export type LibraryPaper = {
   url?: string;
   source?: "arxiv" | "biorxiv" | "medrxiv" | "doi" | "url";
   venue?: string;
+  deletedAt?: number;
 };
 
 export type FolderKey =
@@ -282,32 +283,43 @@ export type FolderKey =
   | "gen"
   | "bio"
   | "rl"
-  | "vision";
+  | "vision"
+  | "deleted";
+
+const notDeleted = (p: LibraryPaper) => !p.deletedAt;
 
 export const FOLDER_MATCH: Record<FolderKey, (p: LibraryPaper) => boolean> = {
-  all: () => true,
-  recent: (p) => /day|week/.test(p.updated ?? ""),
-  pinned: (p) => p.pinned,
-  reading: (p) => Boolean(p.reading),
-  ml: (p) => p.folder === "ML Foundations",
-  multi: (p) => p.folder === "Multimodal",
-  gen: (p) => p.folder === "Generative",
-  bio: (p) => p.folder === "Biology",
-  rl: (p) => p.folder === "RL",
-  vision: (p) => p.folder === "Vision",
+  all: (p) => notDeleted(p),
+  recent: (p) => notDeleted(p) && /day|week/.test(p.updated ?? ""),
+  pinned: (p) => notDeleted(p) && p.pinned,
+  reading: (p) => notDeleted(p) && Boolean(p.reading),
+  ml: (p) => notDeleted(p) && p.folder === "ML Foundations",
+  multi: (p) => notDeleted(p) && p.folder === "Multimodal",
+  gen: (p) => notDeleted(p) && p.folder === "Generative",
+  bio: (p) => notDeleted(p) && p.folder === "Biology",
+  rl: (p) => notDeleted(p) && p.folder === "RL",
+  vision: (p) => notDeleted(p) && p.folder === "Vision",
+  deleted: (p) => Boolean(p.deletedAt),
+};
+
+const restore = (p: LibraryPaper): LibraryPaper => {
+  if (!p.deletedAt) return p;
+  const { deletedAt: _drop, ...rest } = p;
+  return rest;
 };
 
 export const FOLDER_DROP: Record<FolderKey, (p: LibraryPaper) => LibraryPaper> = {
-  all: (p) => p,
-  recent: (p) => ({ ...p, updated: "just now" }),
-  pinned: (p) => ({ ...p, pinned: true }),
-  reading: (p) => ({ ...p, reading: true }),
-  ml: (p) => ({ ...p, folder: "ML Foundations" }),
-  multi: (p) => ({ ...p, folder: "Multimodal" }),
-  gen: (p) => ({ ...p, folder: "Generative" }),
-  bio: (p) => ({ ...p, folder: "Biology" }),
-  rl: (p) => ({ ...p, folder: "RL" }),
-  vision: (p) => ({ ...p, folder: "Vision" }),
+  all: (p) => restore(p),
+  recent: (p) => ({ ...restore(p), updated: "just now" }),
+  pinned: (p) => ({ ...restore(p), pinned: true }),
+  reading: (p) => ({ ...restore(p), reading: true }),
+  ml: (p) => ({ ...restore(p), folder: "ML Foundations" }),
+  multi: (p) => ({ ...restore(p), folder: "Multimodal" }),
+  gen: (p) => ({ ...restore(p), folder: "Generative" }),
+  bio: (p) => ({ ...restore(p), folder: "Biology" }),
+  rl: (p) => ({ ...restore(p), folder: "RL" }),
+  vision: (p) => ({ ...restore(p), folder: "Vision" }),
+  deleted: (p) => ({ ...p, deletedAt: Date.now() }),
 };
 
 export const LIBRARY: LibraryPaper[] = [
@@ -316,7 +328,12 @@ export const LIBRARY: LibraryPaper[] = [
 
 export type FolderEntry =
   | { type: "divider" }
-  | { id: FolderKey; name: string; icon: "library" | "clock" | "pin" | "bookmark" | "folder"; type?: never };
+  | {
+      id: FolderKey;
+      name: string;
+      icon: "library" | "clock" | "pin" | "bookmark" | "folder" | "trash";
+      type?: never;
+    };
 
 export const FOLDERS: FolderEntry[] = [
   { id: "all", name: "All Papers", icon: "library" },
@@ -330,4 +347,6 @@ export const FOLDERS: FolderEntry[] = [
   { id: "bio", name: "Biology", icon: "folder" },
   { id: "rl", name: "RL", icon: "folder" },
   { id: "vision", name: "Vision", icon: "folder" },
+  { type: "divider" },
+  { id: "deleted", name: "Deleted", icon: "trash" },
 ];

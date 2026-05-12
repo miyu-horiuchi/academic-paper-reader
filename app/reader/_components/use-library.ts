@@ -95,10 +95,22 @@ export function useLibrary(
 
   const removePaper = useCallback((id: string) => {
     setLibrary((lib) => {
-      const next = lib.filter((p) => p.id !== id);
+      const target = lib.find((p) => p.id === id);
+      if (!target) return lib;
+      if (target.deletedAt) {
+        const next = lib.filter((p) => p.id !== id);
+        setPaperId((current) => {
+          if (current !== id) return current;
+          return next.find((p) => !p.deletedAt)?.id ?? "";
+        });
+        return next;
+      }
+      const next = lib.map((p) =>
+        p.id === id ? { ...p, deletedAt: Date.now() } : p,
+      );
       setPaperId((current) => {
         if (current !== id) return current;
-        return next[0]?.id ?? "";
+        return next.find((p) => !p.deletedAt)?.id ?? "";
       });
       return next;
     });

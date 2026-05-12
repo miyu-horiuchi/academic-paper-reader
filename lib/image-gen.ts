@@ -1,6 +1,10 @@
-const FAL_ENDPOINT = "https://fal.run/fal-ai/flux/schnell";
+const FAL_ENDPOINT = "https://fal.run/fal-ai/gemini-25-flash-image";
 
-type FalImage = { url: string; width: number; height: number };
+type FalImage = {
+  url: string;
+  width?: number | null;
+  height?: number | null;
+};
 type FalResponse = { images?: FalImage[] };
 
 export type GeneratedVisual = {
@@ -25,10 +29,14 @@ export function buildIsometricPrompt(opts: {
 export async function generateIsometricVisual(opts: {
   title: string;
   abstract?: string | null;
+  customPrompt?: string | null;
 }): Promise<GeneratedVisual | null> {
   const key = process.env.FAL_KEY;
   if (!key) return null;
-  const prompt = buildIsometricPrompt(opts);
+  const prompt =
+    opts.customPrompt && opts.customPrompt.trim().length > 40
+      ? opts.customPrompt.trim()
+      : buildIsometricPrompt(opts);
   const res = await fetch(FAL_ENDPOINT, {
     method: "POST",
     headers: {
@@ -37,13 +45,17 @@ export async function generateIsometricVisual(opts: {
     },
     body: JSON.stringify({
       prompt,
-      image_size: "landscape_16_9",
-      num_inference_steps: 4,
+      aspect_ratio: "16:9",
     }),
   });
   if (!res.ok) return null;
   const data = (await res.json()) as FalResponse;
   const img = data.images?.[0];
   if (!img?.url) return null;
-  return { url: img.url, width: img.width, height: img.height, prompt };
+  return {
+    url: img.url,
+    width: img.width ?? 1024,
+    height: img.height ?? 576,
+    prompt,
+  };
 }

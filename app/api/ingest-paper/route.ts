@@ -25,7 +25,7 @@ type RawSection = {
   explain?: { beginner?: unknown; intermediate?: unknown; expert?: unknown };
   body?: unknown;
 };
-type RawPaper = { sections?: unknown };
+type RawPaper = { sections?: unknown; visualPrompt?: unknown };
 
 function s(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim().length > 0
@@ -146,7 +146,8 @@ export async function POST(req: Request) {
     "        }",
     "      ]",
     "    }",
-    "  ]",
+    "  ],",
+    '  "visualPrompt": "A single paragraph describing what an isometric 3D educational diagram of THIS specific paper should depict, written as an image-generation prompt."',
     "}",
     "",
     "Constraints:",
@@ -156,13 +157,18 @@ export async function POST(req: Request) {
     "- For beginner: avoid jargon, use everyday analogies. For expert: be precise and dense.",
     "- Be faithful to the abstract; do not invent specific numbers, datasets, or claims that aren't grounded in it. If something would be speculation, keep it general.",
     "",
+    "For `visualPrompt` (this drives image generation):",
+    "- Describe a single, paper-specific scene that *teaches* the paper's core idea at a glance.",
+    "- Concretely name the objects/blocks/flows the diagram should show (e.g. 'two encoder columns of stacked blue blocks feeding into a decoder column with curved attention arrows', 'a strand of DNA above three petri dishes of varying colour to denote culturability scores').",
+    "- Always end with this stylistic spine verbatim: 'Isometric 3D educational diagram, axonometric projection, soft pastel palette on cream background, clean geometric blocks with subtle drop shadows, labelled arrows showing data flow, vector illustration style, no readable text, no people, no logos.'",
+    "- One paragraph, 60–120 words, no line breaks.",
+    "",
     "Respond with ONLY the JSON object.",
   ]
     .filter(Boolean)
     .join("\n");
 
   let text: string;
-  let visualUrl: string | undefined;
   try {
     const model = buildServerModel({
       clientProvider: provider,
@@ -175,12 +181,12 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const [textResult, visualResult] = await Promise.all([
-      generateText({ model, prompt, maxOutputTokens: 8000 }),
-      generateIsometricVisual({ title, abstract }).catch(() => null),
-    ]);
+    const textResult = await generateText({
+      model,
+      prompt,
+      maxOutputTokens: 8000,
+    });
     text = textResult.text;
-    visualUrl = visualResult?.url;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const isAuth = /401|unauthorized|invalid.*key|incorrect.*key/i.test(message);
@@ -214,6 +220,15 @@ export async function POST(req: Request) {
       { status: 502 },
     );
   }
+
+  const customVisualPrompt =
+    typeof parsed.visualPrompt === "string" ? parsed.visualPrompt : null;
+  const visual = await generateIsometricVisual({
+    title,
+    abstract,
+    customPrompt: customVisualPrompt,
+  }).catch(() => null);
+  const visualUrl = visual?.url;
 
   const paper: Paper = {
     id: paperId,

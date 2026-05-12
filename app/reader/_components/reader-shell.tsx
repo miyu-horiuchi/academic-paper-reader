@@ -535,6 +535,23 @@ export function ReaderShell({
                 const payload = lib.pendingIngest[lib.paperId];
                 if (payload) {
                   void lib.ingestPaper(lib.paperId, payload, aiSettings);
+                  return;
+                }
+                const entry = lib.library.find((p) => p.id === lib.paperId);
+                if (entry) {
+                  void lib.ingestPaper(
+                    lib.paperId,
+                    {
+                      title: entry.title,
+                      authors: entry.authors,
+                      year: entry.year ? String(entry.year) : null,
+                      venue: entry.venue ?? null,
+                      abstract: null,
+                      url: entry.url ?? "",
+                      source: entry.source ?? "url",
+                    },
+                    aiSettings,
+                  );
                 }
               }}
               onImport={() => setAddOpen(true)}

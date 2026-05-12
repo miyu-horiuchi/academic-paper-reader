@@ -1,4 +1,4 @@
-const FAL_ENDPOINT = "https://fal.run/fal-ai/gemini-25-flash-image";
+const FAL_ENDPOINT = "https://fal.run/fal-ai/gemini-3-pro-image-preview";
 
 type FalImage = {
   url: string;

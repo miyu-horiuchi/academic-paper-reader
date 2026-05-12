@@ -2,7 +2,6 @@ import { generateText } from "ai";
 import { auth } from "@/auth";
 import { kv } from "@/lib/kv";
 import { buildServerModel, hasServerInference } from "@/lib/ai-server";
-import { generateIsometricVisual } from "@/lib/image-gen";
 import type { AiAuthMethod, ProviderId } from "@/lib/ai-settings";
 import type { Paper, Section, Sentence } from "@/lib/paper-data";
 
@@ -222,16 +221,9 @@ export async function POST(req: Request) {
 
   const summary =
     typeof parsed.summary === "string" ? parsed.summary : null;
-  const visual = await generateIsometricVisual({
-    title,
-    summary,
-    abstract,
-  });
-  const visualUrl = "url" in visual ? visual.url : undefined;
-  const visualError = "error" in visual ? visual.error : undefined;
-  if (visualError) {
-    console.error("[ingest-paper] image-gen failed:", visualError);
-  }
+  // Image generation is deferred to a separate /api/regenerate-visual call
+  // so the ingest response returns within Vercel's serverless time budget.
+  const visualUrl: string | undefined = undefined;
 
   const paper: Paper = {
     id: paperId,
@@ -248,7 +240,7 @@ export async function POST(req: Request) {
 
   void kv.set(key(paperId), paper);
 
-  return Response.json({ paper, cached: false, visualError });
+  return Response.json({ paper, cached: false });
 }
 
 export async function GET(req: Request) {

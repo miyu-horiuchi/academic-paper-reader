@@ -286,6 +286,22 @@ export function useLibrary(
           delete next[id];
           return next;
         });
+        void fetch("/api/regenerate-visual", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ paperId: id }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((vd) => {
+            const url = vd?.url;
+            if (typeof url !== "string") return;
+            setPaperContent((prev) => {
+              const current = prev[id];
+              if (!current) return prev;
+              return { ...prev, [id]: { ...current, visualUrl: url } };
+            });
+          })
+          .catch(() => {});
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setIngestStatus((prev) => ({ ...prev, [id]: "error" }));

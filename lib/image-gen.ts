@@ -31,29 +31,40 @@ export async function generateIsometricVisual(opts: {
   title: string;
   summary?: string | null;
   abstract?: string | null;
-}): Promise<GeneratedVisual | null> {
+}): Promise<GeneratedVisual | { error: string }> {
   const key = process.env.FAL_KEY;
-  if (!key) return null;
+  if (!key) return { error: "FAL_KEY not configured" };
   const prompt = buildIsometricPrompt(opts);
-  const res = await fetch(FAL_ENDPOINT, {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  try {
+    const res = await fetch(FAL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt,
+        aspect_ratio: "16:9",
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      return {
+        error: `fal ${res.status}: ${detail.slice(0, 200)}`,
+      };
+    }
+    const data = (await res.json()) as FalResponse;
+    const img = data.images?.[0];
+    if (!img?.url) {
+      return { error: "fal returned no image" };
+    }
+    return {
+      url: img.url,
+      width: img.width ?? 1024,
+      height: img.height ?? 576,
       prompt,
-      aspect_ratio: "16:9",
-    }),
-  });
-  if (!res.ok) return null;
-  const data = (await res.json()) as FalResponse;
-  const img = data.images?.[0];
-  if (!img?.url) return null;
-  return {
-    url: img.url,
-    width: img.width ?? 1024,
-    height: img.height ?? 576,
-    prompt,
-  };
+    };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
 }

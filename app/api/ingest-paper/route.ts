@@ -226,8 +226,12 @@ export async function POST(req: Request) {
     title,
     summary,
     abstract,
-  }).catch(() => null);
-  const visualUrl = visual?.url;
+  });
+  const visualUrl = "url" in visual ? visual.url : undefined;
+  const visualError = "error" in visual ? visual.error : undefined;
+  if (visualError) {
+    console.error("[ingest-paper] image-gen failed:", visualError);
+  }
 
   const paper: Paper = {
     id: paperId,
@@ -243,7 +247,7 @@ export async function POST(req: Request) {
 
   void kv.set(key(paperId), paper);
 
-  return Response.json({ paper, cached: false });
+  return Response.json({ paper, cached: false, visualError });
 }
 
 export async function GET(req: Request) {

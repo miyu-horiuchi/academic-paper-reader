@@ -311,14 +311,6 @@ export const FOLDER_DROP: Record<FolderKey, (p: LibraryPaper) => LibraryPaper> =
 
 export const LIBRARY: LibraryPaper[] = [
   { id: "attention", title: "Attention Is All You Need", authors: "Vaswani et al.", year: 2017, folder: "ML Foundations", pinned: true, updated: "2 days ago", tags: ["transformer", "seq2seq"], unread: 2 },
-  { id: "bert", title: "BERT: Pre-training of Deep Bidirectional Transformers", authors: "Devlin et al.", year: 2018, folder: "ML Foundations", pinned: true, updated: "5 days ago", tags: ["nlp", "pretraining"] },
-  { id: "gpt3", title: "Language Models are Few-Shot Learners", authors: "Brown et al.", year: 2020, folder: "ML Foundations", pinned: false, updated: "1 week ago", tags: ["gpt", "in-context"] },
-  { id: "clip", title: "Learning Transferable Visual Models From Natural Language Supervision", authors: "Radford et al.", year: 2021, folder: "Multimodal", pinned: false, updated: "2 weeks ago", tags: ["clip", "vision"] },
-  { id: "diffusion", title: "Denoising Diffusion Probabilistic Models", authors: "Ho et al.", year: 2020, folder: "Generative", pinned: true, updated: "3 weeks ago", tags: ["diffusion", "generative"] },
-  { id: "alphafold", title: "Highly accurate protein structure prediction with AlphaFold", authors: "Jumper et al.", year: 2021, folder: "Biology", pinned: false, updated: "1 month ago", tags: ["protein", "biology"] },
-  { id: "dqn", title: "Human-level control through deep reinforcement learning", authors: "Mnih et al.", year: 2015, folder: "RL", pinned: false, updated: "2 months ago", tags: ["rl", "atari"] },
-  { id: "adam", title: "Adam: A Method for Stochastic Optimization", authors: "Kingma & Ba", year: 2014, folder: "ML Foundations", pinned: false, updated: "3 months ago", tags: ["optimization"] },
-  { id: "resnet", title: "Deep Residual Learning for Image Recognition", authors: "He et al.", year: 2015, folder: "Vision", pinned: false, updated: "4 months ago", tags: ["resnet", "vision"] },
 ];
 
 export type FolderEntry =

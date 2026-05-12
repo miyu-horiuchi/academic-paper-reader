@@ -15,7 +15,7 @@ export type GeneratedVisual = {
 };
 
 const STYLE_GUIDE =
-  "Render as an isometric 3D educational diagram. Axonometric projection, soft pastel palette on a cream background, clean geometric blocks with subtle drop shadows, labelled arrows showing data flow, vector illustration style, no readable text, no people, no logos.";
+  "Render as an isometric 3D educational diagram. Fill the entire canvas edge-to-edge with the diagram content — no empty margins, no whitespace borders, no centered floating composition. The diagram itself spans the full width and height of the image. Axonometric projection, soft pastel palette on a cream background, clean geometric blocks with subtle drop shadows, labelled arrows showing data flow, vector illustration style, no readable text, no people, no logos.";
 
 export function buildIsometricPrompt(opts: {
   title: string;

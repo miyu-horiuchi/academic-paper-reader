@@ -177,19 +177,6 @@ const PAPER_VISUALS: Record<string, Visual> = {
   },
 };
 
-const FAL_PROXY_URL = process.env.NEXT_PUBLIC_FAL_PROXY_URL ?? "";
-
-function buildPrompt(paperTitle: string): string {
-  return [
-    `3D isometric hand-drawn illustration of the academic paper "${paperTitle}",`,
-    "travel guidebook style, warm cream paper background,",
-    "soft watercolor + pen-and-ink, gentle shading,",
-    "small labeled buildings and objects representing the core concepts,",
-    "leader lines pointing to elements, educational infographic,",
-    "high detail, no text labels in the image itself",
-  ].join(" ");
-}
-
 async function generateVisual({
   paperId,
   paperTitle,
@@ -199,24 +186,10 @@ async function generateVisual({
   paperTitle: string;
   signal: AbortSignal;
 }): Promise<string> {
-  if (!FAL_PROXY_URL) {
-    await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(resolve, 1400);
-      signal.addEventListener("abort", () => {
-        clearTimeout(t);
-        reject(new Error("aborted"));
-      });
-    });
-    return PAPER_VISUALS[paperId]?.image ?? FALLBACK_IMAGE;
-  }
-
-  const res = await fetch(FAL_PROXY_URL, {
+  const res = await fetch("/api/regenerate-visual", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt: buildPrompt(paperTitle),
-      image_size: "landscape_16_9",
-    }),
+    body: JSON.stringify({ paperId, title: paperTitle }),
     signal,
   });
   if (!res.ok) {
@@ -226,9 +199,9 @@ async function generateVisual({
     };
     throw new Error(err.detail || err.error || `proxy ${res.status}`);
   }
-  const data = (await res.json()) as { image_url?: string };
-  if (!data.image_url) throw new Error("no image returned");
-  return data.image_url;
+  const data = (await res.json()) as { url?: string };
+  if (!data.url) throw new Error("no image returned");
+  return data.url;
 }
 
 function GuideIcon({ kind, size = 14 }: { kind: IconKind; size?: number }) {

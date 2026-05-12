@@ -243,6 +243,7 @@ export async function POST(req: Request) {
     updated: "just now",
     sections,
     visualUrl,
+    summary: summary ?? undefined,
   };
 
   void kv.set(key(paperId), paper);

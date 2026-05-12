@@ -1,6 +1,7 @@
 import type { LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createXai } from "@ai-sdk/xai";
 import {
@@ -23,10 +24,11 @@ export function buildServerModel(opts: {
   authMethod?: AiAuthMethod;
 }): LanguageModel | null {
   if (hasServerInference()) {
-    return createOpenAI({
+    return createOpenAICompatible({
+      name: "gmi",
       apiKey: process.env.GMI_API_KEY!,
       baseURL: process.env.GMI_BASE_URL!,
-    })(process.env.GMI_TEXT_MODEL!);
+    }).chatModel(process.env.GMI_TEXT_MODEL!);
   }
   const { clientProvider, clientApiKey, authMethod = "key" } = opts;
   if (!clientProvider || !clientApiKey) return null;

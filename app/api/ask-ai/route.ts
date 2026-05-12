@@ -1,14 +1,7 @@
-import { generateText, type LanguageModel } from "ai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createXai } from "@ai-sdk/xai";
+import { generateText } from "ai";
 import { auth } from "@/auth";
-import {
-  PROVIDERS,
-  type AiAuthMethod,
-  type ProviderId,
-} from "@/lib/ai-settings";
+import { buildServerModel, hasServerInference } from "@/lib/ai-server";
+import type { AiAuthMethod, ProviderId } from "@/lib/ai-settings";
 
 export const runtime = "nodejs";
 
@@ -81,30 +74,6 @@ async function callVertexAi(
   return text ?? "";
 }
 
-function buildModel(
-  provider: ProviderId,
-  apiKey: string,
-  authMethod: AiAuthMethod,
-): LanguageModel {
-  const entry = PROVIDERS.find((p) => p.id === provider);
-  if (!entry) throw new Error(`unknown provider: ${provider}`);
-  switch (provider) {
-    case "anthropic":
-      return createAnthropic({ apiKey })(entry.model);
-    case "openai":
-      if (authMethod === "codex-oauth") {
-        return createOpenAI({ apiKey, baseURL: "https://api.openai.com/v1" })(
-          "gpt-5",
-        );
-      }
-      return createOpenAI({ apiKey })(entry.model);
-    case "google":
-      return createGoogleGenerativeAI({ apiKey })(entry.model);
-    case "xai":
-      return createXai({ apiKey })(entry.model);
-  }
-}
-
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -137,7 +106,7 @@ export async function POST(req: Request) {
     expiresAt,
   } = body;
 
-  if (!provider || !apiKey) {
+  if (!hasServerInference() && (!provider || !apiKey)) {
     return Response.json(
       { error: "no_key", message: "Configure an AI provider in Settings." },
       { status: 400 },
@@ -165,8 +134,12 @@ export async function POST(req: Request) {
   ].join("\n");
   const fullPrompt = systemPreamble + userPrompt;
 
-  if (provider === "google" && authMethod === "google-oauth") {
-    if (!projectId) {
+  if (
+    !hasServerInference() &&
+    provider === "google" &&
+    authMethod === "google-oauth"
+  ) {
+    if (!projectId || !apiKey) {
       return Response.json(
         {
           error: "no_project",
@@ -176,7 +149,7 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    let accessToken = apiKey;
+    let accessToken: string = apiKey;
     let refreshed: RefreshedTokens | null = null;
     if (expiresAt && expiresAt < Date.now() && refreshToken) {
       refreshed = await refreshGoogleToken(refreshToken);
@@ -213,9 +186,21 @@ export async function POST(req: Request) {
   }
 
   try {
-    const langModel = buildModel(provider, apiKey, authMethod);
+    const langModel = buildServerModel({
+      clientProvider: provider,
+      clientApiKey: apiKey,
+      authMethod,
+    });
+    if (!langModel) {
+      return Response.json(
+        { error: "no_key", message: "Configure an AI provider in Settings." },
+        { status: 400 },
+      );
+    }
     const system =
-      authMethod === "codex-oauth" ? CODEX_SYSTEM_PROMPT : undefined;
+      authMethod === "codex-oauth" && !hasServerInference()
+        ? CODEX_SYSTEM_PROMPT
+        : undefined;
     const { text } = await generateText({
       model: langModel,
       system,

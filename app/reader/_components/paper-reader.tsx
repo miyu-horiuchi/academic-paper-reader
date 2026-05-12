@@ -871,6 +871,7 @@ export function PaperReader({
         <AIVisual
           paperId={activePaper.id}
           paperTitle={activePaper.title}
+          initialImageUrl={activePaper.visualUrl}
           onJump={jumpToSection}
         />
         {activePaper.sections.map((sec) => (

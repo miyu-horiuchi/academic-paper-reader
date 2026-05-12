@@ -732,15 +732,19 @@ type State = "idle" | "loading" | "ready" | "error";
 export function AIVisual({
   paperId = "attention",
   paperTitle,
+  initialImageUrl,
   onJump,
 }: {
   paperId?: string;
   paperTitle: string;
+  initialImageUrl?: string;
   onJump?: (sectionId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [state, setState] = useState<State>("idle");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [state, setState] = useState<State>(initialImageUrl ? "ready" : "idle");
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initialImageUrl ?? null,
+  );
   const [hovered, setHovered] = useState<string | null>(null);
   const [active, setActive] = useState<Hotspot | null>(null);
   const [error, setError] = useState("");

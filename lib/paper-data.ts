@@ -44,6 +44,7 @@ export type Paper = {
   folder: string;
   updated: string;
   sections: Section[];
+  visualUrl?: string;
 };
 
 export const PAPER: Paper = {

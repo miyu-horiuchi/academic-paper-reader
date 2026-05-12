@@ -1,10 +1,7 @@
-import { generateText, type LanguageModel } from "ai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createXai } from "@ai-sdk/xai";
+import { generateText } from "ai";
 import { auth } from "@/auth";
-import { PROVIDERS, type ProviderId } from "@/lib/ai-settings";
+import { buildServerModel, hasServerInference } from "@/lib/ai-server";
+import type { ProviderId } from "@/lib/ai-settings";
 
 export const runtime = "nodejs";
 
@@ -13,21 +10,6 @@ type PaperSummary = {
   folder?: string;
   tags?: string[];
 };
-
-function buildModel(provider: ProviderId, apiKey: string): LanguageModel {
-  const entry = PROVIDERS.find((p) => p.id === provider);
-  if (!entry) throw new Error(`unknown provider: ${provider}`);
-  switch (provider) {
-    case "anthropic":
-      return createAnthropic({ apiKey })(entry.model);
-    case "openai":
-      return createOpenAI({ apiKey })(entry.model);
-    case "google":
-      return createGoogleGenerativeAI({ apiKey })(entry.model);
-    case "xai":
-      return createXai({ apiKey })(entry.model);
-  }
-}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -51,7 +33,7 @@ export async function POST(req: Request) {
     apiKey,
   } = body;
 
-  if (!provider || !apiKey) {
+  if (!hasServerInference() && (!provider || !apiKey)) {
     return Response.json(
       { error: "no_key", message: "Configure an AI provider in Settings." },
       { status: 400 },
@@ -90,7 +72,16 @@ export async function POST(req: Request) {
   ].join("\n");
 
   try {
-    const model = buildModel(provider, apiKey);
+    const model = buildServerModel({
+      clientProvider: provider,
+      clientApiKey: apiKey,
+    });
+    if (!model) {
+      return Response.json(
+        { error: "no_key", message: "Configure an AI provider in Settings." },
+        { status: 400 },
+      );
+    }
     const { text } = await generateText({ model, prompt });
     const match = text.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(match ? match[0] : text) as {

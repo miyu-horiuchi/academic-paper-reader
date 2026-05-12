@@ -1,45 +1,15 @@
-import { generateText, type LanguageModel } from "ai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createXai } from "@ai-sdk/xai";
+import { generateText } from "ai";
 import { auth } from "@/auth";
 import { kv } from "@/lib/kv";
-import {
-  PROVIDERS,
-  type AiAuthMethod,
-  type ProviderId,
-} from "@/lib/ai-settings";
+import { buildServerModel, hasServerInference } from "@/lib/ai-server";
+import { generateIsometricVisual } from "@/lib/image-gen";
+import type { AiAuthMethod, ProviderId } from "@/lib/ai-settings";
 import type { Paper, Section, Sentence } from "@/lib/paper-data";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const LEVELS = ["beginner", "intermediate", "expert"] as const;
-
-function buildModel(
-  provider: ProviderId,
-  apiKey: string,
-  authMethod: AiAuthMethod,
-): LanguageModel {
-  const entry = PROVIDERS.find((p) => p.id === provider);
-  if (!entry) throw new Error(`unknown provider: ${provider}`);
-  switch (provider) {
-    case "anthropic":
-      return createAnthropic({ apiKey })(entry.model);
-    case "openai":
-      if (authMethod === "codex-oauth") {
-        return createOpenAI({ apiKey, baseURL: "https://api.openai.com/v1" })(
-          "gpt-5",
-        );
-      }
-      return createOpenAI({ apiKey })(entry.model);
-    case "google":
-      return createGoogleGenerativeAI({ apiKey })(entry.model);
-    case "xai":
-      return createXai({ apiKey })(entry.model);
-  }
-}
 
 function key(id: string): string {
   return `paper:content:${id}`;
@@ -134,7 +104,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (!provider || !apiKey) {
+  if (!hasServerInference() && (!provider || !apiKey)) {
     return Response.json(
       { error: "no_key", message: "Configure an AI provider in Settings." },
       { status: 400 },
@@ -192,10 +162,25 @@ export async function POST(req: Request) {
     .join("\n");
 
   let text: string;
+  let visualUrl: string | undefined;
   try {
-    const model = buildModel(provider, apiKey, authMethod);
-    const result = await generateText({ model, prompt });
-    text = result.text;
+    const model = buildServerModel({
+      clientProvider: provider,
+      clientApiKey: apiKey,
+      authMethod,
+    });
+    if (!model) {
+      return Response.json(
+        { error: "no_key", message: "Configure an AI provider in Settings." },
+        { status: 400 },
+      );
+    }
+    const [textResult, visualResult] = await Promise.all([
+      generateText({ model, prompt }),
+      generateIsometricVisual({ title, abstract }).catch(() => null),
+    ]);
+    text = textResult.text;
+    visualUrl = visualResult?.url;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const isAuth = /401|unauthorized|invalid.*key|incorrect.*key/i.test(message);
@@ -235,6 +220,7 @@ export async function POST(req: Request) {
     folder,
     updated: "just now",
     sections,
+    visualUrl,
   };
 
   void kv.set(key(paperId), paper);

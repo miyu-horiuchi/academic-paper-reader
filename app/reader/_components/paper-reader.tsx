@@ -880,6 +880,51 @@ export function PaperReader({
         >
           {activePaper.authors}
         </div>
+        {entry.url && !entry.url.startsWith("pdf:") && (
+          <a
+            href={entry.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 14,
+              fontSize: 12.5,
+              color: READER_TOKENS.accent,
+              textDecoration: "none",
+              fontFamily: READER_TOKENS.sans,
+              fontWeight: 500,
+            }}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4.5 2.5h-2v7h7v-2" />
+              <path d="M7 2.5h2.5v2.5M9.5 2.5L5 7" />
+            </svg>
+            View original{entry.source === "arxiv" ? " on arXiv" : entry.source === "doi" ? " (DOI)" : entry.source === "biorxiv" ? " on bioRxiv" : entry.source === "medrxiv" ? " on medRxiv" : ""}
+          </a>
+        )}
+        {entry.url?.startsWith("pdf:") && (
+          <div
+            style={{
+              marginTop: 14,
+              fontSize: 12,
+              color: READER_TOKENS.ink3,
+              fontFamily: READER_TOKENS.sans,
+            }}
+          >
+            Source: {entry.url.slice(4)} (uploaded PDF)
+          </div>
+        )}
       </div>
 
       <div
